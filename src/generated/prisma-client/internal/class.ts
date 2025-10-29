@@ -33,6 +33,14 @@ const config: runtime.GetPrismaClientConfig = {
         "fromEnvVar": null,
         "value": "windows",
         "native": true
+      },
+      {
+        "fromEnvVar": null,
+        "value": "windows"
+      },
+      {
+        "fromEnvVar": null,
+        "value": "rhel-openssl-3.0.x"
       }
     ],
     "previewFeatures": [],
@@ -55,8 +63,8 @@ const config: runtime.GetPrismaClientConfig = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma-client\"\n}\n\ndatasource db {\n  provider  = \"postgresql\"\n  url       = env(\"DATABASE_URL\")\n  directUrl = env(\"DATABASE_URL\")\n}\n\nmodel Article {\n  id          String          @id @default(cuid())\n  title       String\n  summary     String?\n  content     String\n  status      ArticleStatus   @default(PENDING)\n  authorName  String\n  authorEmail String?\n  createdAt   DateTime        @default(now())\n  updatedAt   DateTime        @updatedAt\n  submittedAt DateTime        @default(now())\n  reviewedAt  DateTime?\n  publishedAt DateTime?\n  slug        String          @unique\n  reviewNotes String?\n  category    ArticleCategory @default(MARKETS_MACRO)\n  tags        String[]        @default([])\n}\n\nmodel Subscriber {\n  id             String           @id @default(cuid())\n  email          String           @unique\n  status         SubscriberStatus @default(ACTIVE)\n  createdAt      DateTime         @default(now()) @db.Timestamptz(6)\n  updatedAt      DateTime         @default(now()) @updatedAt @db.Timestamptz(6)\n  unsubscribedAt DateTime?        @db.Timestamptz(6)\n}\n\nenum ArticleStatus {\n  DRAFT\n  PENDING\n  APPROVED\n  PUBLISHED\n  REJECTED\n}\n\nenum ArticleCategory {\n  MARKETS_MACRO\n  OPERATORS\n  CAPITAL_STRATEGY\n  FAST_TAKE\n  DEEP_DIVE\n}\n\nenum SubscriberStatus {\n  ACTIVE\n  UNSUBSCRIBED\n}\n",
-  "inlineSchemaHash": "f3632472ddb6aba6240cbb14cd266c7ba410f169361fcfb3903c46916769daff",
+  "inlineSchema": "generator client {\n  provider      = \"prisma-client\"\n  output        = \"../src/generated/prisma-client\"\n  binaryTargets = [\"native\", \"windows\", \"rhel-openssl-3.0.x\"]\n}\n\ndatasource db {\n  provider  = \"postgresql\"\n  url       = env(\"DATABASE_URL\")\n  directUrl = env(\"DATABASE_URL\")\n}\n\nmodel Article {\n  id          String          @id @default(cuid())\n  title       String\n  summary     String?\n  content     String\n  status      ArticleStatus   @default(PENDING)\n  authorName  String\n  authorEmail String?\n  createdAt   DateTime        @default(now())\n  updatedAt   DateTime        @updatedAt\n  submittedAt DateTime        @default(now())\n  reviewedAt  DateTime?\n  publishedAt DateTime?\n  slug        String          @unique\n  reviewNotes String?\n  category    ArticleCategory @default(MARKETS_MACRO)\n  tags        String[]        @default([])\n}\n\nmodel Subscriber {\n  id             String           @id @default(cuid())\n  email          String           @unique\n  status         SubscriberStatus @default(ACTIVE)\n  createdAt      DateTime         @default(now()) @db.Timestamptz(6)\n  updatedAt      DateTime         @default(now()) @updatedAt @db.Timestamptz(6)\n  unsubscribedAt DateTime?        @db.Timestamptz(6)\n}\n\nenum ArticleStatus {\n  DRAFT\n  PENDING\n  APPROVED\n  PUBLISHED\n  REJECTED\n}\n\nenum ArticleCategory {\n  MARKETS_MACRO\n  OPERATORS\n  CAPITAL_STRATEGY\n  FAST_TAKE\n  DEEP_DIVE\n}\n\nenum SubscriberStatus {\n  ACTIVE\n  UNSUBSCRIBED\n}\n",
+  "inlineSchemaHash": "3470b9729b1f462a7db8ef891aa7e218e469fcb8d68501c8b42a80852ab0987a",
   "copyEngine": true,
   "runtimeDataModel": {
     "models": {},
