@@ -1,0 +1,6 @@
+-- CreateEnum
+CREATE TYPE "ArticleCategory" AS ENUM ('MARKETS_MACRO', 'OPERATORS', 'CAPITAL_STRATEGY', 'FAST_TAKE', 'DEEP_DIVE');
+
+-- AlterTable
+ALTER TABLE "Article" ADD COLUMN     "category" "ArticleCategory" NOT NULL DEFAULT 'MARKETS_MACRO',
+ADD COLUMN     "tags" TEXT[] DEFAULT ARRAY[]::TEXT[];

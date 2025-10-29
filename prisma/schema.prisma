@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+model Article {
+  id          String          @id @default(cuid())
+  title       String
+  summary     String?
+  content     String
+  status      ArticleStatus   @default(PENDING)
+  authorName  String
+  authorEmail String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  submittedAt DateTime        @default(now())
+  reviewedAt  DateTime?
+  publishedAt DateTime?
+  slug        String          @unique
+  reviewNotes String?
+  category    ArticleCategory @default(MARKETS_MACRO)
+  tags        String[]        @default([])
+}
+
+model Subscriber {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  status         SubscriberStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
+  unsubscribedAt DateTime?        @db.Timestamptz(6)
+}
+
+enum ArticleStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum ArticleCategory {
+  MARKETS_MACRO
+  OPERATORS
+  CAPITAL_STRATEGY
+  FAST_TAKE
+  DEEP_DIVE
+}
+
+enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+}
