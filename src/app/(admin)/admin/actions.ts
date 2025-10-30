@@ -1,6 +1,6 @@
 'use server';
 
-import { ArticleStatus } from '@prisma/client';
+import { ArticleStatus, ArticleCategory } from '@prisma/client';
 import {
   clearAdminSession,
   establishAdminSession,
@@ -10,6 +10,9 @@ import {
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { slugify } from '@/lib/slugify';
+import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
+import type { FormActionState } from '@/app/actions';
 
 export type AdminAuthState = {
   error?: string;
@@ -130,4 +133,99 @@ export async function deleteArticleAction(articleId: string, slug: string) {
   if (slug) {
     revalidatePath(`/articles/${slug}`);
   }
+}
+
+async function buildUniqueSlug(title: string) {
+  const base = slugify(title) || `article-${Date.now()}`;
+  let slug = base;
+  let suffix = 1;
+
+  while (true) {
+    const exists = await prisma.article.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (!exists) {
+      return slug;
+    }
+
+    slug = `${base}-${suffix++}`;
+  }
+}
+
+export async function submitAdminArticleAction(
+  _prevState: FormActionState,
+  formData: FormData,
+): Promise<FormActionState> {
+  await ensureAdmin();
+
+  const title = (formData.get('title') ?? '').toString().trim();
+  const summary = (formData.get('summary') ?? '').toString().trim();
+  const content = (formData.get('content') ?? '').toString().trim();
+  const categoryInput = (formData.get('category') ?? '').toString().trim();
+  const tagsInput = (formData.get('tags') ?? '').toString();
+  const parsedTags = tagsInput
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+
+  const tags = Array.from(new Set(parsedTags)).slice(0, 5);
+
+  const errors: Record<string, string> = {};
+
+  if (!title) {
+    errors.title = 'Please add a headline.';
+  }
+
+  if (title.length > 150) {
+    errors.title = 'Keep the headline under 150 characters.';
+  }
+
+  if (!content) {
+    errors.content = 'Article body is required.';
+  }
+
+  const categoryValues = new Set(Object.keys(ARTICLE_CATEGORY_META));
+  if (!categoryInput || !categoryValues.has(categoryInput)) {
+    errors.category = 'Pick the category that best fits the insight.';
+  }
+
+  if (tags.length > 5) {
+    errors.tags = 'Keep it to five tags so the story stays focused.';
+  }
+
+  const category = categoryInput as ArticleCategory;
+
+  if (Object.keys(errors).length > 0) {
+    return {
+      ok: false,
+      message: 'Please fix the highlighted fields before submitting.',
+      errors,
+    };
+  }
+
+  const slug = await buildUniqueSlug(title);
+
+  await prisma.article.create({
+    data: {
+      title,
+      summary: summary || null,
+      content,
+      category,
+      tags,
+      authorName: 'Admin',
+      slug,
+      status: ArticleStatus.PUBLISHED,
+      publishedAt: new Date(),
+    },
+  });
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+
+  return {
+    ok: true,
+    message: 'Article published successfully.',
+  };
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import type { ReactNode } from 'react';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Audiowide } from 'next/font/google';
 import './globals.css';
 
 const geistSans = Geist({
@@ -14,13 +14,43 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const audiowide = Audiowide({
+  variable: "--font-audiowide",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+const siteUrl = 'https://insightsetter.manacorp.org';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  manifest: '/site.webmanifest',
+  applicationName: 'InsightSetter',
   title: {
     default: 'InsightSetter',
     template: '%s | InsightSetter',
   },
-  description:
-    'InsightSetter curates sharp thinking on finance, tech, and the global economy.',
+  description: 'Deep insights on capital, strategy, and macro trends.',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.ico',
+  },
+  openGraph: {
+    title: 'InsightSetter',
+    description: 'Deep insights on capital, strategy, and macro trends.',
+    images: ['/logo-color.svg'],
+    url: siteUrl,
+    siteName: 'InsightSetter',
+    type: 'website',
+  },
+  themeColor: '#ffffff',
+  twitter: {
+    card: 'summary_large_image',
+    title: 'InsightSetter',
+    description: 'Deep insights on capital, strategy, and macro trends.',
+    images: ['/logo-color.svg'],
+  },
 };
 
 const themeScript = `
@@ -54,8 +84,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground antialiased`}
-      >
+        className={`${geistSans.variable} ${geistMono.variable} ${audiowide.variable} bg-background text-foreground antialiased}`}>
         <Script id="theme-script" strategy="beforeInteractive">
           {themeScript}
         </Script>

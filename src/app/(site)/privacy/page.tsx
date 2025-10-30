@@ -105,8 +105,8 @@ const sections: Array<{
         <li>Opt out of marketing emails by using the unsubscribe link in our communications.</li>
         <li>
           Request a copy of your data or object to certain processing activities by contacting us at{' '}
-          <Link href="mailto:privacy@insightsetter.com" className="text-primary hover:underline">
-            privacy@insightsetter.com
+          <Link href="mailto:insightsetter@manacorp.com" className="text-primary hover:underline">
+            insightsetter@manacorp.com
           </Link>
           .
         </li>
@@ -159,8 +159,8 @@ const sections: Array<{
       <p>
         InsightSetter is operated by InsightSetter Media LLC. Questions or requests regarding this Privacy Policy should be
         sent to{' '}
-        <Link href="mailto:privacy@insightsetter.com" className="text-primary hover:underline">
-          privacy@insightsetter.com
+        <Link href="mailto:insightsetter@manacorp.com" className="text-primary hover:underline">
+          insightsetter@manacorp.com
         </Link>
         . You can also write to: InsightSetter Media LLC, Attn: Privacy, 548 Market Street, Suite 62487, San Francisco, CA 94104.
       </p>
@@ -192,4 +192,3 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
-

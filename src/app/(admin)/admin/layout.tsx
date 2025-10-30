@@ -7,6 +7,7 @@ import { logoutAdmin } from './actions';
 
 const navLinks = [
   { href: '/admin#overview', label: 'Overview' },
+  { href: '/admin/submit', label: 'Submit Article' },
   { href: '/admin#stats', label: 'Stats' },
   { href: '/admin#analytics', label: 'Analytics' },
   { href: '/admin#queue', label: 'Queue' },

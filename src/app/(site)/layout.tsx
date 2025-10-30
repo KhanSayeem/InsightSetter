@@ -1,9 +1,10 @@
 import type { ReactNode, SVGProps } from 'react';
 import Link from 'next/link';
+import { Facebook, Instagram, Linkedin, Twitter } from 'lucide-react';
 
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ButtonLink } from '@/components/ui/button';
-import { Tag } from '@/components/ui/tag';
+import { Logo } from '@/components/logo';
 
 const navigation = [
   { href: '/#briefing', label: 'Briefing' },
@@ -11,6 +12,13 @@ const navigation = [
   { href: '/#rails', label: 'Tracks' },
   { href: '/#community', label: 'Community' },
   { href: '/submit', label: 'Submit' },
+];
+
+const socialLinks = [
+  { href: 'https://www.facebook.com/profile.php?id=61582438600061', label: 'Facebook', Icon: Facebook },
+  { href: 'https://www.instagram.com/insightsetter/', label: 'Instagram', Icon: Instagram },
+  { href: 'https://www.linkedin.com/company/109363160/admin/dashboard/', label: 'LinkedIn', Icon: Linkedin },
+  { href: 'https://x.com/InsightSetter', label: 'X (Twitter)', Icon: Twitter },
 ];
 
 function ArrowIcon(props: SVGProps<SVGSVGElement>) {
@@ -41,16 +49,8 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
 
       <header className="border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6 py-5">
-          <Link href="/" className="group flex items-center gap-3">
-            <Tag
-              variant="primary"
-              className="border-border/60 bg-primary/10 text-primary/80 transition group-hover:border-primary/40 group-hover:text-primary"
-            >
-              InsightSetter
-            </Tag>
-            <span className="text-lg font-semibold tracking-tight text-foreground transition group-hover:text-primary">
-              InsightSetter
-            </span>
+          <Link href="/" className="group inline-flex">
+            <Logo />
           </Link>
           <div className="flex items-center gap-3">
             <nav className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
@@ -97,6 +97,18 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
               <Link href="/terms" className="transition hover:text-foreground">
                 Terms
               </Link>
+            </div>
+            <div className="flex gap-3">
+              {socialLinks.map(({ href, label, Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-label={label}
+                  className="text-muted-foreground transition hover:text-primary"
+                >
+                  <Icon className="h-5 w-5" strokeWidth={1.8} />
+                </Link>
+              ))}
             </div>
             <Link
               href="/submit"

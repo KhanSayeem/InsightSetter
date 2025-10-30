@@ -35,8 +35,8 @@ const sections: Array<{ title: string; body: JSX.Element }> = [
         <li>
           You are responsible for safeguarding your account credentials and for all activities that occur under your account.
           Notify us immediately at{' '}
-          <Link href="mailto:support@insightsetter.com" className="text-primary hover:underline">
-            support@insightsetter.com
+          <Link href="mailto:insightsetter@manacorp.com" className="text-primary hover:underline">
+            insightsetter@manacorp.com
           </Link>{' '}
           if you suspect unauthorized access.
         </li>
@@ -136,8 +136,8 @@ const sections: Array<{ title: string; body: JSX.Element }> = [
       <p>
         We may suspend or terminate your access to the Services at any time for conduct that we believe violates these Terms,
         our policies, or applicable law. You may terminate your account by contacting us at{' '}
-        <Link href="mailto:support@insightsetter.com" className="text-primary hover:underline">
-          support@insightsetter.com
+        <Link href="mailto:insightsetter@manacorp.com" className="text-primary hover:underline">
+          insightsetter@manacorp.com
         </Link>
         .
       </p>
@@ -168,8 +168,8 @@ const sections: Array<{ title: string; body: JSX.Element }> = [
     body: (
       <p>
         Questions about these Terms can be directed to{' '}
-        <Link href="mailto:legal@insightsetter.com" className="text-primary hover:underline">
-          legal@insightsetter.com
+        <Link href="mailto:insightsetter@manacorp.com" className="text-primary hover:underline">
+          insightsetter@manacorp.com
         </Link>{' '}
         or mailed to InsightSetter Media LLC, Attn: Legal, 548 Market Street, Suite 62487, San Francisco, CA 94104.
       </p>
@@ -201,4 +201,3 @@ export default function TermsPage() {
     </div>
   );
 }
-
