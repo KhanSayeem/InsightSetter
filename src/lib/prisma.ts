@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PrismaClient } from '@/generated/prisma-client/client';
+import { PrismaClient } from '@prisma/client';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 

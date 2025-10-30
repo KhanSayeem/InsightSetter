@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import type { SVGProps } from 'react';
-import type { Prisma } from '@/generated/prisma-client/client';
+import type { Prisma } from '@prisma/client';
+import { ArticleStatus, ArticleCategory } from '@prisma/client';
 
 import { ButtonLink } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LinkButton } from '@/components/ui/link-button';
 import { Tag } from '@/components/ui/tag';
 import { NewsletterForm } from '@/components/newsletter-form';
-import { ArticleStatus, ArticleCategory } from '@/generated/prisma-client/enums';
 import { ARTICLE_CATEGORY_META, RAIL_CATEGORIES } from '@/lib/article-categories';
 import { prisma } from '@/lib/prisma';
 
@@ -270,7 +270,7 @@ export default async function Home() {
                 ))}
               </div>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                getExcerpt(featuredArticle.summary, featuredArticle.content, 200)
+                {getExcerpt(featuredArticle.summary, featuredArticle.content, 200)}
               </p>
             </div>
             <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
@@ -298,13 +298,14 @@ export default async function Home() {
         ) : (
           <div className="grid gap-5 md:grid-cols-3">
             {secondaryArticles.map((article) => (
-              <article
+              <Link
                 key={article.id}
-                className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                href={`/articles/${article.slug}`}
+                className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="space-y-3">
                   <h3 className="text-lg font-semibold leading-tight text-foreground transition group-hover:text-primary">
-                    <Link href={`/articles/${article.slug}`}>{article.title}</Link>
+                    {article.title}
                   </h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     {getExcerpt(article.summary, article.content, 160)}
@@ -314,7 +315,7 @@ export default async function Home() {
                   <span>{formatDate(article.publishedAt ?? article.createdAt)}</span>
                   <span>{article.authorName}</span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}
@@ -411,35 +412,6 @@ export default async function Home() {
         </div>
       </Card>
 
-      <section id="community" className="space-y-8">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-              Community pulse
-            </p>
-            <h2 className="text-2xl font-semibold text-foreground">Who&apos;s inside the InsightSetter orbit</h2>
-          </div>
-          <LinkButton
-            href="mailto:editor@insightsetter.com"
-            icon={<ArrowIcon className="h-4 w-4" />}
-          >
-            Partner with us
-          </LinkButton>
-        </header>
-        <div className="grid gap-6 md:grid-cols-3">
-          {communitySignals.map((signal) => (
-            <Card
-              key={signal.label}
-              className="p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">{signal.label}</p>
-              <p className="mt-4 text-3xl font-semibold text-foreground">{signal.stat}</p>
-              <p className="mt-3 text-sm text-muted-foreground">{signal.copy}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
       {deepDives.length > 0 && (
         <section id="deep-dives" className="space-y-6">
           <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -493,6 +465,35 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      <section id="community" className="space-y-8">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+              Community pulse
+            </p>
+            <h2 className="text-2xl font-semibold text-foreground">Who&apos;s inside the InsightSetter orbit</h2>
+          </div>
+          <LinkButton
+            href="mailto:editor@insightsetter.com"
+            icon={<ArrowIcon className="h-4 w-4" />}
+          >
+            Partner with us
+          </LinkButton>
+        </header>
+        <div className="grid gap-6 md:grid-cols-3">
+          {communitySignals.map((signal) => (
+            <Card
+              key={signal.label}
+              className="p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">{signal.label}</p>
+              <p className="mt-4 text-3xl font-semibold text-foreground">{signal.stat}</p>
+              <p className="mt-3 text-sm text-muted-foreground">{signal.copy}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

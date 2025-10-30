@@ -1,17 +1,17 @@
 import type { Metadata } from 'next';
 import type { SVGProps } from 'react';
 
+import { ArticleStatus, SubscriberStatus } from '@prisma/client';
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LinkButton } from '@/components/ui/link-button';
 import { Tag } from '@/components/ui/tag';
-import { ArticleStatus } from '@/generated/prisma-client/enums';
 import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { DigestSenderForm } from '@/components/admin/digest-sender-form';
-import { SubscriberStatus } from '@/generated/prisma-client/enums';
-import { publishArticleAction, rejectArticleAction } from './actions';
+import { deleteArticleAction, publishArticleAction, rejectArticleAction } from './actions';
 import LoginForm from './login-form';
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', {
@@ -175,6 +175,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     tagSamples,
     totalSubscribers,
     newSubscribersLast7Days,
+    activeSubscribers,
   ] = await Promise.all([
     prisma.article.count({
       where: { createdAt: { gte: sevenDaysAgo } },
@@ -218,6 +219,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         createdAt: { gte: sevenDaysAgo },
       },
     }),
+    prisma.subscriber.findMany({
+      where: { status: SubscriberStatus.ACTIVE },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, email: true, createdAt: true },
+    }),
   ]);
 
   const completedReviews = reviewDurations.filter(
@@ -244,6 +250,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const topTags = Array.from(tagCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
+
+  const digestRecipients = activeSubscribers.map((subscriber) => ({
+    id: subscriber.id,
+    email: subscriber.email,
+    createdAt: subscriber.createdAt.toISOString(),
+  }));
 
   return (
     <div className="space-y-10">
@@ -412,7 +424,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <h4 className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
                 Send digest
               </h4>
-              <DigestSenderForm />
+              <DigestSenderForm subscribers={digestRecipients} />
             </div>
           </Card>
         </div>
@@ -560,13 +572,29 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     ))}
                   </div>
                 </div>
-                <LinkButton
-                  href={`/articles/${article.slug}`}
-                  prefetch={false}
-                  icon={<ArrowIcon className="h-4 w-4" />}
-                >
-                  Read
-                </LinkButton>
+                <div className="flex flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                  <LinkButton
+                    href={`/articles/${article.slug}`}
+                    prefetch={false}
+                    icon={<ArrowIcon className="h-4 w-4" />}
+                    className="w-full sm:w-auto"
+                  >
+                    Read
+                  </LinkButton>
+                  <form
+                    action={deleteArticleAction.bind(null, article.id, article.slug)}
+                    className="w-full sm:w-auto"
+                  >
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
+                      Delete article
+                    </Button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>

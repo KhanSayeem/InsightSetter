@@ -1,4 +1,4 @@
-import type { ArticleCategory } from '@/generated/prisma-client/enums';
+import type { ArticleCategory } from '@prisma/client';
 
 type CategoryMeta = {
   label: string;

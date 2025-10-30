@@ -1,11 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArticleStatus } from '@prisma/client';
 
 import { Tag } from '@/components/ui/tag';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { prisma } from '@/lib/prisma';
-import { ArticleStatus } from '@/generated/prisma-client/enums';
 
 const dateFormatter = new Intl.DateTimeFormat('en', {
   dateStyle: 'long',
@@ -14,6 +16,12 @@ const dateFormatter = new Intl.DateTimeFormat('en', {
 export const revalidate = 0;
 
 async function getArticle(slug: string) {
+  const logLine = `${new Date().toISOString()} slug=${slug ?? 'undefined'}\n`;
+  try {
+    fs.appendFileSync(path.join(process.cwd(), 'article-debug.log'), logLine);
+  } catch (error) {
+    console.error('[article] failed to write debug log', error);
+  }
   return prisma.article.findFirst({
     where: {
       slug,
@@ -34,11 +42,11 @@ async function getArticle(slug: string) {
 }
 
 type PageParams = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export async function generateMetadata(props: PageParams): Promise<Metadata> {
-  const { slug } = props.params;
+  const { slug } = await props.params;
   const article = await getArticle(slug);
 
   if (!article) {
@@ -55,7 +63,20 @@ export async function generateMetadata(props: PageParams): Promise<Metadata> {
 }
 
 export default async function ArticlePage(props: PageParams) {
-  const { slug } = props.params;
+  const params = await props.params;
+  try {
+    fs.appendFileSync(
+      path.join(process.cwd(), 'article-debug.log'),
+      `${new Date().toISOString()} params=${JSON.stringify(params)}\n`,
+    );
+  } catch (error) {
+    console.error('[article] failed to write props debug log', error);
+  }
+  const { slug } = params;
+  if (!slug) {
+    console.error('[article] missing slug param', params);
+    notFound();
+  }
   const article = await getArticle(slug);
 
   if (!article) {

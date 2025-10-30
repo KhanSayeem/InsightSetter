@@ -1,6 +1,6 @@
 'use server';
 
-import { ArticleStatus } from '@/generated/prisma-client/enums';
+import { ArticleStatus } from '@prisma/client';
 import {
   clearAdminSession,
   establishAdminSession,
@@ -116,4 +116,18 @@ export async function rejectArticleAction(articleId: string, formData: FormData)
   });
 
   revalidatePath(ADMIN_HOME);
+}
+
+export async function deleteArticleAction(articleId: string, slug: string) {
+  await ensureAdmin();
+
+  await prisma.article.delete({
+    where: { id: articleId },
+  });
+
+  revalidatePath('/');
+  revalidatePath(ADMIN_HOME);
+  if (slug) {
+    revalidatePath(`/articles/${slug}`);
+  }
 }

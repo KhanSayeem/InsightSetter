@@ -3,12 +3,13 @@
 import { Resend } from 'resend';
 import { revalidatePath } from 'next/cache';
 
+import { ArticleStatus, SubscriberStatus } from '@prisma/client';
+
 import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
 import { renderNewsletterDigestEmail } from '@/emails/newsletter-digest';
 import { renderNewsletterWelcomeEmail } from '@/emails/newsletter-welcome';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
-import { ArticleStatus, SubscriberStatus } from '@/generated/prisma-client/enums';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFrom = process.env.RESEND_FROM_EMAIL;
@@ -102,6 +103,11 @@ export async function sendDigestAction(
     (formData.get('subject') ?? '').toString().trim() || 'InsightSetter briefing';
 
   const articleCount = Number(formData.get('articleCount')) || 5;
+  const recipientMode = (formData.get('recipientMode') ?? '').toString();
+  const selectedRecipients = formData
+    .getAll('recipients')
+    .map((value) => value.toString().trim().toLowerCase())
+    .filter(Boolean);
 
   const articles = await prisma.article.findMany({
     where: { status: ArticleStatus.PUBLISHED },
@@ -134,6 +140,25 @@ export async function sendDigestAction(
     return { ok: false, message: 'No active subscribers to send to yet.' };
   }
 
+  let recipientEmails: string[] = [];
+
+  if (recipientMode === 'all') {
+    recipientEmails = subscribers.map((subscriber) => subscriber.email);
+  } else if (recipientMode === 'custom') {
+    const uniqueSelected = Array.from(new Set(selectedRecipients));
+    if (uniqueSelected.length === 0) {
+      return { ok: false, message: 'Select at least one subscriber before sending.' };
+    }
+    const allowedEmails = new Set(subscribers.map((subscriber) => subscriber.email));
+    recipientEmails = uniqueSelected.filter((email) => allowedEmails.has(email));
+
+    if (recipientEmails.length === 0) {
+      return { ok: false, message: 'Your selection no longer matches active subscribers.' };
+    }
+  } else {
+    return { ok: false, message: 'Choose who should receive the digest.' };
+  }
+
   const resend = getResendClient();
 
   const digestArticles = articles.map((article) => ({
@@ -148,7 +173,7 @@ export async function sendDigestAction(
   try {
     await resend.emails.send({
       from: resendFrom!,
-      to: subscribers.map((subscriber) => subscriber.email),
+      to: recipientEmails,
       subject,
       html: renderNewsletterDigestEmail({
         articles: digestArticles,
@@ -157,7 +182,7 @@ export async function sendDigestAction(
     });
 
     revalidatePath('/admin');
-    return { ok: true, message: `Digest sent to ${subscribers.length} subscribers.` };
+    return { ok: true, message: `Digest sent to ${recipientEmails.length} subscriber${recipientEmails.length === 1 ? '' : 's'}.` };
   } catch (error) {
     console.error('[newsletter] failed to send digest', error);
     return { ok: false, message: 'Digest send failed. Check the server logs for details.' };

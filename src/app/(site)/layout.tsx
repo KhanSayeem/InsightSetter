@@ -90,6 +90,14 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
             <p className="text-muted-foreground/70">
               &copy; {new Date().getFullYear()} InsightSetter. All rights reserved.
             </p>
+            <div className="flex gap-4 text-sm font-medium text-muted-foreground">
+              <Link href="/privacy" className="transition hover:text-foreground">
+                Privacy
+              </Link>
+              <Link href="/terms" className="transition hover:text-foreground">
+                Terms
+              </Link>
+            </div>
             <Link
               href="/submit"
               className="group inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"

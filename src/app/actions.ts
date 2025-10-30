@@ -1,10 +1,11 @@
 'use server';
 
-import { ArticleStatus } from '@/generated/prisma-client/enums';
-import type { ArticleCategory } from '@/generated/prisma-client/enums';
+import { ArticleStatus } from '@prisma/client';
+import type { ArticleCategory } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
+
 import { prisma } from '@/lib/prisma';
 import { slugify } from '@/lib/slugify';
-import { revalidatePath } from 'next/cache';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 
 export type FormActionState = {
