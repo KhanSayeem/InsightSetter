@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { moveArticleToCategoryAction } from '@/app/(admin)/admin/actions';
@@ -15,17 +16,55 @@ type MoveToMenuProps = {
 export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const ref = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (!ref.current) return;
-      if (!ref.current.contains(e.target as Node)) setOpen(false);
+      if (!buttonRef.current || !dropdownRef.current) return;
+      if (!buttonRef.current.contains(e.target as Node) && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     }
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
+
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const updatePosition = () => {
+        if (buttonRef.current) {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setPosition({
+            top: rect.bottom + window.scrollY + 8,
+            left: rect.left + window.scrollX,
+            width: rect.width,
+          });
+        }
+      };
+
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    if (open) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [open]);
 
   const options = ARTICLE_CATEGORY_OPTIONS.filter((d) => d.value !== currentCategory);
   if (options.length === 0) return null;
@@ -39,8 +78,9 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
   }
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <Button 
+        ref={buttonRef}
         type="button" 
         variant="secondary" 
         size="sm" 
@@ -49,14 +89,22 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
       >
         {isPending ? 'Moving...' : 'Move to →'}
       </Button>
-      {open && (
-        <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border/70 bg-background p-1 shadow-xl">
+      {open && typeof window !== 'undefined' && createPortal(
+        <div 
+          ref={dropdownRef}
+          className="fixed z-[1000] w-56 overflow-hidden rounded-xl border border-border/70 bg-background p-1 shadow-xl transition-opacity duration-200"
+          style={{
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+            minWidth: `${position.width}px`,
+          }}
+        >
           <div className="max-h-64 overflow-y-auto">
             {options.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                className="w-full rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-primary/10 disabled:opacity-50"
+                className="w-full rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-primary/10 disabled:opacity-50"
                 onClick={() => handleMove(opt.value)}
                 disabled={isPending}
               >
@@ -64,8 +112,9 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
