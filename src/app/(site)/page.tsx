@@ -505,7 +505,7 @@ export default async function Home() {
               </p>
               <h2 className="text-2xl font-semibold text-foreground">Real-world playbooks</h2>
             </div>
-            <LinkButton href="/case-studies" icon={<ArrowIcon className="h-4 w-4" />} size="sm">
+            <LinkButton href="/case-studies" icon={<ArrowIcon className="h-4 w-4" />}>
               View all case studies
             </LinkButton>
           </header>

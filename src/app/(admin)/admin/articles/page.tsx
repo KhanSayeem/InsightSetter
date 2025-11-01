@@ -116,7 +116,7 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
               Search, filter, and re-categorize your published content
             </p>
           </div>
-          <LinkButton href="/admin" variant="secondary">
+          <LinkButton href="/admin">
             ← Back to Dashboard
           </LinkButton>
         </div>
@@ -206,8 +206,6 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
                     href={`/articles/${article.slug}`}
                     prefetch={false}
                     icon={<ArrowIcon className="h-4 w-4" />}
-                    size="sm"
-                    variant="secondary"
                     className="w-full sm:w-auto"
                   >
                     View
@@ -244,8 +242,6 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
               {page > 1 && (
                 <LinkButton
                   href={`/admin/articles?q=${query}&category=${categoryFilter}&page=${page - 1}`}
-                  variant="secondary"
-                  size="sm"
                 >
                   ← Previous
                 </LinkButton>
@@ -253,8 +249,6 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
               {page < totalPages && (
                 <LinkButton
                   href={`/admin/articles?q=${query}&category=${categoryFilter}&page=${page + 1}`}
-                  variant="secondary"
-                  size="sm"
                 >
                   Next →
                 </LinkButton>

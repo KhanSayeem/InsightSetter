@@ -549,10 +549,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <span className="text-xs text-muted-foreground">(Last 30)</span>
           </div>
           <div className="flex gap-2">
-            <LinkButton href="/admin/articles" variant="secondary" size="sm">
+            <LinkButton href="/admin/articles">
               Manage all →
             </LinkButton>
-            <LinkButton href="/" icon={<ArrowIcon className="h-4 w-4" />} size="sm">
+            <LinkButton href="/" icon={<ArrowIcon className="h-4 w-4" />}>
               View site
             </LinkButton>
           </div>
