@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { Button, ButtonLink } from '@/components/ui/button';
 import { Tag } from '@/components/ui/tag';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { logoutAdmin } from './actions';
 
 const navLinks = [
@@ -65,6 +66,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </p>
             </div>
             <div className="flex items-center gap-3 lg:justify-end">
+              <ThemeToggle />
               <ButtonLink href="/" variant="secondary" size="sm">
                 View site
               </ButtonLink>

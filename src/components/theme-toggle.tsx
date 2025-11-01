@@ -42,13 +42,20 @@ export function ThemeToggle() {
       return;
     }
 
+    // Apply default dark theme if no stored preference
+    const stored = getStoredTheme();
+    if (stored === null) {
+      applyTheme('dark', { persist: false });
+    }
+
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (event: MediaQueryListEvent) => {
       if (getStoredTheme() !== null) {
         return;
       }
 
-      applyTheme(event.matches ? 'dark' : 'light', { persist: false });
+      // Default to dark if no stored preference
+      applyTheme('dark', { persist: false });
     };
 
     if (typeof mediaQuery.addEventListener === 'function') {
