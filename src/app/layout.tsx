@@ -66,7 +66,7 @@ const themeScript = `
       const stored = window.localStorage.getItem(storageKey);
       const theme = stored === 'light' || stored === 'dark'
         ? stored
-        : mediaQuery.matches ? 'dark' : 'light';
+        : 'dark';
 
       if (theme === 'dark') {
         root.classList.add(classNameDark);
