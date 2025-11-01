@@ -135,6 +135,39 @@ export async function deleteArticleAction(articleId: string, slug: string) {
   }
 }
 
+// Map of category to route paths for revalidation
+const CATEGORY_ROUTES: Record<ArticleCategory, string> = {
+  MARKETS_MACRO: '/markets-macro',
+  OPERATORS: '/operators',
+  CAPITAL_STRATEGY: '/capital-strategy',
+  FAST_TAKE: '/fast-takes',
+  DEEP_DIVE: '/deep-dives',
+  CASE_STUDY: '/case-studies',
+};
+
+export async function moveArticleToCategoryAction(articleId: string, category: ArticleCategory) {
+  await ensureAdmin();
+
+  const article = await prisma.article.update({
+    where: { id: articleId },
+    data: { category },
+    select: { slug: true },
+  });
+
+  // Aggressively revalidate all relevant paths
+  revalidatePath('/', 'layout');
+  revalidatePath(ADMIN_HOME, 'page');
+  
+  // Revalidate all category pages dynamically
+  Object.values(CATEGORY_ROUTES).forEach(route => {
+    revalidatePath(route, 'page');
+  });
+  
+  if (article.slug) {
+    revalidatePath(`/articles/${article.slug}`, 'page');
+  }
+}
+
 async function buildUniqueSlug(title: string) {
   const base = slugify(title) || `article-${Date.now()}`;
   let slug = base;

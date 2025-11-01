@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { DigestSenderForm } from '@/components/admin/digest-sender-form';
+import { MoveToMenu } from '@/components/admin/move-to-menu';
 import { deleteArticleAction, publishArticleAction, rejectArticleAction } from './actions';
 import LoginForm from './login-form';
 
@@ -125,6 +126,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     );
   }
 
+  // First batch: Critical data for immediate display
   const [pending, recentPublished, publishedCount, rejectedCount] = await Promise.all([
     prisma.article.findMany({
       where: { status: ArticleStatus.PENDING },
@@ -147,7 +149,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         { publishedAt: 'desc' },
         { createdAt: 'desc' },
       ],
-      take: 5,
+      take: 30,
       select: {
         id: true,
         title: true,
@@ -166,16 +168,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+  // Second batch: Article analytics
   const [
     submissionsLast7Days,
     publishedLast7Days,
     queuedByCategory,
     publishedByCategory,
-    reviewDurations,
-    tagSamples,
-    totalSubscribers,
-    newSubscribersLast7Days,
-    activeSubscribers,
   ] = await Promise.all([
     prisma.article.count({
       where: { createdAt: { gte: sevenDaysAgo } },
@@ -199,6 +197,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         publishedAt: { gte: thirtyDaysAgo },
       },
     }),
+  ]);
+
+  // Third batch: Review data and tags
+  const [reviewDurations, tagSamples] = await Promise.all([
     prisma.article.findMany({
       select: { submittedAt: true, reviewedAt: true },
     }),
@@ -210,6 +212,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       },
       select: { tags: true },
     }),
+  ]);
+
+  // Fourth batch: Subscriber data
+  const [totalSubscribers, newSubscribersLast7Days, activeSubscribers] = await Promise.all([
     prisma.subscriber.count({
       where: { status: SubscriberStatus.ACTIVE },
     }),
@@ -538,10 +544,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <section id="recent" className="space-y-4">
         <header className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-foreground">Recently published</h2>
-          <LinkButton href="/" icon={<ArrowIcon className="h-4 w-4" />}>
-            View site
-          </LinkButton>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Recently published</h2>
+            <span className="text-xs text-muted-foreground">(Last 30)</span>
+          </div>
+          <div className="flex gap-2">
+            <LinkButton href="/admin/articles" variant="secondary" size="sm">
+              Manage all →
+            </LinkButton>
+            <LinkButton href="/" icon={<ArrowIcon className="h-4 w-4" />} size="sm">
+              View site
+            </LinkButton>
+          </div>
         </header>
         {recentPublished.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-5 text-sm text-muted-foreground">
@@ -581,6 +595,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   >
                     Read
                   </LinkButton>
+                  <MoveToMenu articleId={article.id} currentCategory={article.category} />
                   <form
                     action={deleteArticleAction.bind(null, article.id, article.slug)}
                     className="w-full sm:w-auto"

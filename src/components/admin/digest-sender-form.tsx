@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useMemo, useState } from 'react';
+import { useActionState, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -35,16 +35,18 @@ export function DigestSenderForm({ subscribers }: DigestSenderFormProps) {
 
   const hasSubscribers = subscribers.length > 0;
 
-  useEffect(() => {
-    if (recipientMode !== 'custom' && manualRecipients.length > 0) {
-      setManualRecipients([]);
-    }
-  }, [recipientMode, manualRecipients]);
+  const manualRecipientsFiltered = useMemo(
+    () =>
+      manualRecipients.filter((email) =>
+        subscribers.some((subscriber) => subscriber.email === email),
+      ),
+    [manualRecipients, subscribers],
+  );
 
   const canSubmit =
     hasSubscribers &&
     (recipientMode === 'all' ||
-      (recipientMode === 'custom' && manualRecipients.length > 0));
+      (recipientMode === 'custom' && manualRecipientsFiltered.length > 0));
 
   const handleRecipientToggle = (email: string) => {
     setManualRecipients((prev) =>
@@ -54,13 +56,6 @@ export function DigestSenderForm({ subscribers }: DigestSenderFormProps) {
     );
   };
 
-  useEffect(() => {
-    setManualRecipients((prev) =>
-      prev.filter((email) =>
-        subscribers.some((subscriber) => subscriber.email === email),
-      ),
-    );
-  }, [subscribers]);
 
   const selectionSummary = useMemo(() => {
     if (!hasSubscribers) {
@@ -71,8 +66,8 @@ export function DigestSenderForm({ subscribers }: DigestSenderFormProps) {
       return `All selected (${subscribers.length})`;
     }
 
-    return `${manualRecipients.length}/${subscribers.length} selected`;
-  }, [hasSubscribers, manualRecipients.length, recipientMode, subscribers.length]);
+    return `${manualRecipientsFiltered.length}/${subscribers.length} selected`;
+  }, [hasSubscribers, manualRecipientsFiltered.length, recipientMode, subscribers.length]);
 
   return (
     <form action={formAction} className="space-y-3">
@@ -125,7 +120,10 @@ export function DigestSenderForm({ subscribers }: DigestSenderFormProps) {
                   name="recipientMode"
                   value="all"
                   checked={recipientMode === 'all'}
-                  onChange={() => setRecipientMode('all')}
+                  onChange={() => {
+                    setRecipientMode('all');
+                    setManualRecipients([]);
+                  }}
                   className="h-4 w-4 accent-primary"
                 />
                 <span>Select all subscribers ({subscribers.length})</span>
@@ -170,7 +168,7 @@ export function DigestSenderForm({ subscribers }: DigestSenderFormProps) {
                             value={subscriber.email}
                             checked={
                               recipientMode === 'all' ||
-                              manualRecipients.includes(subscriber.email)
+                              manualRecipientsFiltered.includes(subscriber.email)
                             }
                             onChange={() => handleRecipientToggle(subscriber.email)}
                             disabled={recipientMode !== 'custom'}

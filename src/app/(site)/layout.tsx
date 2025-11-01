@@ -13,6 +13,7 @@ const navigation = [
   { href: '/#briefing', label: 'Briefing' },
   { href: '/#fast-takes', label: 'Fast Takes' },
   { href: '/#rails', label: 'Tracks' },
+  { href: '/case-studies', label: 'Case Studies' },
   { href: '/#community', label: 'Community' },
   { href: '/submit', label: 'Submit' },
 ];

@@ -51,6 +51,7 @@ enum ArticleCategory {
   CAPITAL_STRATEGY
   FAST_TAKE
   DEEP_DIVE
+  CASE_STUDY
 }
 
 enum SubscriberStatus {

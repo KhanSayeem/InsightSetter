@@ -1,0 +1,7 @@
+User-agent: GPTBot
+Allow: /
+User-agent: CCBot
+Allow: /
+User-agent: Googlebot
+Allow: /
+Sitemap: https://insightsetter.manacorp.org/sitemap.xml

@@ -30,6 +30,10 @@ export const ARTICLE_CATEGORY_META: Record<ArticleCategory, CategoryMeta> = {
     label: 'Deep Dives',
     description: 'Long-form frameworks and essays to revisit and reference.',
   },
+  CASE_STUDY: {
+    label: 'Case Studies',
+    description: 'In-depth analyses of companies and products: strategy, execution, and outcomes.',
+  },
 };
 
 export const ARTICLE_CATEGORY_OPTIONS = Object.entries(ARTICLE_CATEGORY_META).map(

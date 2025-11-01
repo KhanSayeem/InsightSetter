@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { SVGProps } from 'react';
 import type { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { ArticleStatus, ArticleCategory } from '@prisma/client';
 
 import { ButtonLink } from '@/components/ui/button';
@@ -9,7 +10,6 @@ import { LinkButton } from '@/components/ui/link-button';
 import { Tag } from '@/components/ui/tag';
 import { NewsletterForm } from '@/components/newsletter-form';
 import { ARTICLE_CATEGORY_META, RAIL_CATEGORIES } from '@/lib/article-categories';
-import { prisma } from '@/lib/prisma';
 
 export const revalidate = 0;
 
@@ -63,45 +63,133 @@ function SparkIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 export default async function Home() {
-  const articleSelect = {
-    id: true,
-    title: true,
-    summary: true,
-    content: true,
-    slug: true,
-    authorName: true,
-    publishedAt: true,
-    createdAt: true,
-    category: true,
-    tags: true,
-  } as const satisfies Prisma.ArticleSelect;
+  const loadArticles = async () => {
+    const articleSelect = {
+      id: true,
+      title: true,
+      summary: true,
+      content: true,
+      slug: true,
+      authorName: true,
+      publishedAt: true,
+      createdAt: true,
+      category: true,
+      tags: true,
+    } as const satisfies Prisma.ArticleSelect;
 
-  type ArticlePreview = Prisma.ArticleGetPayload<{ select: typeof articleSelect }>;
-  type RailBucket = {
-    category: ArticleCategory;
-    articles: ArticlePreview[];
+    type ArticlePreview = Prisma.ArticleGetPayload<{ select: typeof articleSelect }>;
+    type RailBucket = {
+      category: ArticleCategory;
+      articles: ArticlePreview[];
+    };
+
+    let latestArticles: ArticlePreview[];
+
+    try {
+      latestArticles = await prisma.article.findMany({
+        where: { status: ArticleStatus.PUBLISHED },
+        orderBy: [
+          { publishedAt: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take: 30,
+        select: articleSelect,
+      });
+    } catch (error) {
+      console.error('[home] failed to load latest articles. Please check your DATABASE_URL environment variable and ensure the database server is running and accessible.', error);
+      latestArticles = [];
+    }
+
+    const featuredArticle = latestArticles[0];
+
+    if (!featuredArticle) {
+      return null;
+    }
+
+    // Get all categories dynamically
+    const allCategoryKeys = Object.keys(ARTICLE_CATEGORY_META) as ArticleCategory[];
+    
+    const [fastTakeArticles, allCategoryBuckets, deepDiveArticles, caseStudyArticles]: [
+      ArticlePreview[],
+      RailBucket[],
+      ArticlePreview[],
+      ArticlePreview[],
+    ] = await Promise.all([
+      prisma.article.findMany({
+        where: {
+          status: ArticleStatus.PUBLISHED,
+          category: ArticleCategory.FAST_TAKE,
+        },
+        orderBy: [
+          { publishedAt: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take: 6,
+        select: articleSelect,
+      }),
+      Promise.all(
+        RAIL_CATEGORIES.map(async (category): Promise<RailBucket> => ({
+          category,
+          articles: await prisma.article.findMany({
+            where: { status: ArticleStatus.PUBLISHED, category },
+            orderBy: [
+              { publishedAt: 'desc' },
+              { createdAt: 'desc' },
+            ],
+            take: 4,
+            select: articleSelect,
+          }),
+        })),
+      ),
+      prisma.article.findMany({
+        where: {
+          status: ArticleStatus.PUBLISHED,
+          category: ArticleCategory.DEEP_DIVE,
+        },
+        orderBy: [
+          { publishedAt: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take: 4,
+        select: articleSelect,
+      }),
+      prisma.article.findMany({
+        where: {
+          status: ArticleStatus.PUBLISHED,
+          category: ArticleCategory.CASE_STUDY,
+        },
+        orderBy: [
+          { publishedAt: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take: 4,
+        select: articleSelect,
+      }),
+    ]);
+
+    const secondaryArticles =
+      fastTakeArticles.length > 0 ? fastTakeArticles.slice(0, 3) : latestArticles.slice(1, 4);
+
+    const deepDives =
+      deepDiveArticles.length > 0
+        ? deepDiveArticles
+        : latestArticles.filter((article) => article.id !== featuredArticle.id).slice(0, 4);
+
+    const caseStudies = caseStudyArticles.length > 0 ? caseStudyArticles : [];
+
+    const rails = allCategoryBuckets.map(({ category, articles }) => ({
+      category,
+      title: ARTICLE_CATEGORY_META[category].railTitle ?? ARTICLE_CATEGORY_META[category].label,
+      description: ARTICLE_CATEGORY_META[category].description,
+      articles,
+    }));
+
+    return { latestArticles, featuredArticle, secondaryArticles, deepDives, caseStudies, rails };
   };
 
-  let latestArticles: ArticlePreview[];
+  const articleData = await loadArticles();
 
-  try {
-    latestArticles = await prisma.article.findMany({
-      where: { status: ArticleStatus.PUBLISHED },
-      orderBy: [
-        { publishedAt: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      take: 30,
-      select: articleSelect,
-    });
-  } catch (error) {
-    console.error('[home] failed to load latest articles', error);
-    latestArticles = [];
-  }
-
-  const featuredArticle = latestArticles[0];
-
-  if (!featuredArticle) {
+  if (!articleData) {
     return (
       <div className="space-y-12">
         <Card
@@ -131,65 +219,7 @@ export default async function Home() {
     );
   }
 
-  const [fastTakeArticles, railBuckets, deepDiveArticles]: [
-    ArticlePreview[],
-    RailBucket[],
-    ArticlePreview[],
-  ] = await Promise.all([
-    prisma.article.findMany({
-      where: {
-        status: ArticleStatus.PUBLISHED,
-        category: ArticleCategory.FAST_TAKE,
-      },
-      orderBy: [
-        { publishedAt: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      take: 6,
-      select: articleSelect,
-    }),
-      Promise.all(
-        RAIL_CATEGORIES.map(async (category): Promise<RailBucket> => ({
-          category,
-          articles: await prisma.article.findMany({
-            where: { status: ArticleStatus.PUBLISHED, category },
-            orderBy: [
-            { publishedAt: 'desc' },
-            { createdAt: 'desc' },
-          ],
-          take: 4,
-          select: articleSelect,
-        }),
-      })),
-    ),
-    prisma.article.findMany({
-      where: {
-        status: ArticleStatus.PUBLISHED,
-        category: ArticleCategory.DEEP_DIVE,
-      },
-      orderBy: [
-        { publishedAt: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      take: 4,
-      select: articleSelect,
-    }),
-  ]);
-
-  const secondaryArticles =
-    fastTakeArticles.length > 0 ? fastTakeArticles.slice(0, 3) : latestArticles.slice(1, 4);
-
-  const deepDives =
-    deepDiveArticles.length > 0
-      ? deepDiveArticles
-      : latestArticles.filter((article) => article.id !== featuredArticle.id).slice(0, 4);
-
-  const rails = railBuckets.map(({ category, articles }) => ({
-    category,
-    title: ARTICLE_CATEGORY_META[category].railTitle ?? ARTICLE_CATEGORY_META[category].label,
-    description: ARTICLE_CATEGORY_META[category].description,
-    articles,
-  }));
+  const { featuredArticle, secondaryArticles, deepDives, caseStudies, rails } = articleData;
 
   const communitySignals = [
     {
@@ -459,6 +489,59 @@ export default async function Home() {
                   icon={<ArrowIcon className="h-4 w-4" />}
                 >
                   Read analysis
+                </LinkButton>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {caseStudies.length > 0 && (
+        <section id="case-studies" className="space-y-6">
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                {ARTICLE_CATEGORY_META.CASE_STUDY.label}
+              </p>
+              <h2 className="text-2xl font-semibold text-foreground">Real-world playbooks</h2>
+            </div>
+            <LinkButton href="/case-studies" icon={<ArrowIcon className="h-4 w-4" />} size="sm">
+              View all case studies
+            </LinkButton>
+          </header>
+          <div className="grid gap-6 md:grid-cols-2">
+            {caseStudies.map((article) => (
+              <Card
+                key={article.id}
+                as="article"
+                className="group flex h-full flex-col justify-between p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                    <span>{formatDate(article.publishedAt ?? article.createdAt)}</span>
+                    <span className="text-muted-foreground/50">|</span>
+                    <span>{article.authorName}</span>
+                  </div>
+                  <h3 className="text-2xl font-semibold text-foreground transition group-hover:text-primary">
+                    <Link href={`/articles/${article.slug}`}>{article.title}</Link>
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {getExcerpt(article.summary, article.content, 220)}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {article.tags.slice(0, 4).map((tag) => (
+                      <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
+                        #{tag}
+                      </Tag>
+                    ))}
+                  </div>
+                </div>
+                <LinkButton
+                  href={`/articles/${article.slug}`}
+                  className="mt-6 text-primary"
+                  icon={<ArrowIcon className="h-4 w-4" />}
+                >
+                  Read case study
                 </LinkButton>
               </Card>
             ))}

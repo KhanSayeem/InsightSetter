@@ -86,11 +86,13 @@ function formatSqliteFilePath(filePath: string) {
   return `file:${normalized}`;
 }
 
-const databaseUrl = normalizeSqliteUrl(process.env.DATABASE_URL);
+const databaseUrl = process.env.DATABASE_URL?.startsWith('postgresql://') 
+  ? process.env.DATABASE_URL 
+  : normalizeSqliteUrl(process.env.DATABASE_URL);
+
 if (process.env.NODE_ENV === 'development') {
   console.info('[prisma] using database', databaseUrl);
 }
-process.env.DATABASE_URL = databaseUrl;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import type { ReactNode } from 'react';
 import { Geist, Geist_Mono, Audiowide } from 'next/font/google';
@@ -44,13 +44,16 @@ export const metadata: Metadata = {
     siteName: 'InsightSetter',
     type: 'website',
   },
-  themeColor: '#ffffff',
   twitter: {
     card: 'summary_large_image',
     title: 'InsightSetter',
     description: 'Deep insights on capital, strategy, and macro trends.',
     images: ['/logo-color.svg'],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
 };
 
 const themeScript = `

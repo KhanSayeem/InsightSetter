@@ -1,0 +1,3 @@
+-- Baseline migration (no-op)
+-- The live database schema is treated as the starting point.
+-- This migration is intentionally empty to avoid duplicating object creation in the shadow database.
