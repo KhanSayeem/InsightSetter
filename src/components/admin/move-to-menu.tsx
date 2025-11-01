@@ -17,14 +17,14 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (!buttonRef.current || !dropdownRef.current) return;
-      if (!buttonRef.current.contains(e.target as Node) && !dropdownRef.current.contains(e.target as Node)) {
+      if (!wrapperRef.current || !dropdownRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node) && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
@@ -33,10 +33,10 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
   }, []);
 
   useEffect(() => {
-    if (open && buttonRef.current) {
+    if (open && wrapperRef.current) {
       const updatePosition = () => {
-        if (buttonRef.current) {
-          const rect = buttonRef.current.getBoundingClientRect();
+        if (wrapperRef.current) {
+          const rect = wrapperRef.current.getBoundingClientRect();
           setPosition({
             top: rect.bottom + window.scrollY + 8,
             left: rect.left + window.scrollX,
@@ -78,9 +78,8 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
   }
 
   return (
-    <>
+    <div ref={wrapperRef} className="inline-block">
       <Button 
-        ref={buttonRef}
         type="button" 
         variant="secondary" 
         size="sm" 
@@ -115,6 +114,6 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
         </div>,
         document.body
       )}
-    </>
+    </div>
   );
 }
