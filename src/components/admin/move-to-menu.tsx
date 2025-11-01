@@ -77,13 +77,29 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
     });
   }
 
+  function openMenu() {
+    if (!open) {
+      if (wrapperRef.current) {
+        const rect = wrapperRef.current.getBoundingClientRect();
+        setPosition({
+          top: rect.bottom + window.scrollY + 8,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  }
+
   return (
     <div ref={wrapperRef} className="inline-block">
       <Button 
         type="button" 
         variant="secondary" 
         size="sm" 
-        onClick={() => setOpen((v) => !v)}
+        onClick={openMenu}
         disabled={isPending}
       >
         {isPending ? 'Moving...' : 'Move to →'}
