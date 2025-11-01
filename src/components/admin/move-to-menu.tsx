@@ -88,10 +88,10 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
       >
         {isPending ? 'Moving...' : 'Move to →'}
       </Button>
-      {open && typeof window !== 'undefined' && createPortal(
+      {open && typeof window !== 'undefined' && position.top > 0 && createPortal(
         <div 
           ref={dropdownRef}
-          className="fixed z-[1000] w-56 overflow-hidden rounded-xl border border-border/70 bg-background p-1 shadow-xl transition-opacity duration-200"
+          className="fixed z-[1000] w-56 overflow-hidden rounded-xl border border-border/70 bg-background p-1 shadow-xl animate-in fade-in-0 zoom-in-95 duration-200"
           style={{
             top: `${position.top}px`,
             left: `${position.left}px`,
