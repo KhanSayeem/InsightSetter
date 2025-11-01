@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useTransition } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { moveArticleToCategoryAction } from '@/app/(admin)/admin/actions';
@@ -16,105 +15,99 @@ type MoveToMenuProps = {
 export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
+  const [maxHeight, setMaxHeight] = useState<number>(256);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
+  // Close when clicking outside or pressing Escape
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (!wrapperRef.current || !dropdownRef.current) return;
-      if (!wrapperRef.current.contains(e.target as Node) && !dropdownRef.current.contains(e.target as Node)) {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, []);
-
-  useEffect(() => {
-    if (open && wrapperRef.current) {
-      const updatePosition = () => {
-        if (wrapperRef.current) {
-          const rect = wrapperRef.current.getBoundingClientRect();
-          setPosition({
-            top: rect.bottom + window.scrollY + 8,
-            left: rect.left + window.scrollX,
-            width: rect.width,
-          });
-        }
-      };
-
-      updatePosition();
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
-
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    if (open) {
+      document.addEventListener('mousedown', onDocClick);
+      document.addEventListener('keydown', onKey);
       return () => {
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
+        document.removeEventListener('mousedown', onDocClick);
+        document.removeEventListener('keydown', onKey);
       };
     }
   }, [open]);
 
+  // Auto-flip above if there isn't enough space below; also cap height to fit viewport
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+    if (!open) return;
+    const update = () => {
+      if (!wrapperRef.current) return;
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const gap = 8;
+      const desired = 256; // px
+      const bottomSpace = window.innerHeight - rect.bottom - gap;
+      const topSpace = rect.top - gap;
+      if (bottomSpace < 160 && topSpace > bottomSpace) {
+        setPlacement('top');
+        setMaxHeight(Math.max(140, Math.min(desired, topSpace)));
+      } else {
+        setPlacement('bottom');
+        setMaxHeight(Math.max(140, Math.min(desired, bottomSpace)));
+      }
     };
-    if (open) {
-      document.addEventListener('keydown', handleEsc);
-      return () => document.removeEventListener('keydown', handleEsc);
-    }
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
   }, [open]);
 
   const options = ARTICLE_CATEGORY_OPTIONS.filter((d) => d.value !== currentCategory);
   if (options.length === 0) return null;
 
-  async function handleMove(category: ArticleCategory) {
+  function toggleMenu() {
+    setOpen((v) => !v);
+  }
+
+  function handleMove(category: ArticleCategory) {
     setOpen(false);
-    startTransition(async () => {
-      await moveArticleToCategoryAction(articleId, category);
-      router.refresh();
+    startTransition(() => {
+      // Fire and refresh; no await inside transition to keep UI responsive
+      moveArticleToCategoryAction(articleId, category).finally(() => {
+        router.refresh();
+      });
     });
   }
 
-  function openMenu() {
-    if (!open) {
-      if (wrapperRef.current) {
-        const rect = wrapperRef.current.getBoundingClientRect();
-        setPosition({
-          top: rect.bottom + window.scrollY + 8,
-          left: rect.left + window.scrollX,
-          width: rect.width,
-        });
-      }
-      setOpen(true);
-    } else {
-      setOpen(false);
-    }
-  }
-
   return (
-    <div ref={wrapperRef} className="inline-block">
-      <Button 
-        type="button" 
-        variant="secondary" 
-        size="sm" 
-        onClick={openMenu}
+    <div ref={wrapperRef} className="relative inline-block">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={toggleMenu}
         disabled={isPending}
       >
         {isPending ? 'Moving...' : 'Move to →'}
       </Button>
-      {open && typeof window !== 'undefined' && position.top > 0 && createPortal(
-        <div 
-          ref={dropdownRef}
-          className="fixed z-[1000] w-56 overflow-hidden rounded-xl border border-border/70 bg-background p-1 shadow-xl animate-in fade-in-0 zoom-in-95 duration-200"
-          style={{
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-            minWidth: `${position.width}px`,
-          }}
+
+      {open ? (
+        <div
+          role="menu"
+          className={
+            `absolute right-0 z-50 w-56 overflow-hidden rounded-xl border border-border/70 bg-background p-1 shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 ` +
+            (placement === 'bottom' ? 'mt-2 top-full' : 'mb-2 bottom-full')
+          }
         >
-          <div className="max-h-64 overflow-y-auto">
+          <div className="overflow-y-auto" style={{ maxHeight }}>
             {options.map((opt) => (
               <button
                 key={opt.value}
@@ -127,9 +120,8 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
               </button>
             ))}
           </div>
-        </div>,
-        document.body
-      )}
+        </div>
+      ) : null}
     </div>
   );
 }
