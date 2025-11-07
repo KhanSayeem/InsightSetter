@@ -9,6 +9,7 @@ import { Tag } from '@/components/ui/tag';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { prisma } from '@/lib/prisma';
 import { ViewTracker } from './view-tracker';
+import { ShareButton } from '@/components/share-button';
 
 const dateFormatter = new Intl.DateTimeFormat('en', {
   dateStyle: 'long',
@@ -104,7 +105,7 @@ export default async function ArticlePage(props: PageParams) {
           <span className="text-muted-foreground/50">|</span>
           <span>{article.authorName}</span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.25em]">
             {ARTICLE_CATEGORY_META[article.category].label}
           </Tag>
@@ -113,6 +114,8 @@ export default async function ArticlePage(props: PageParams) {
               #{tag}
             </Tag>
           ))}
+          <span className="mx-2 text-muted-foreground/50">|</span>
+          <ShareButton title={article.title} />
         </div>
         {article.summary && (
           <p className="mt-2 rounded-xl border border-primary/20 bg-primary/10 p-4 text-base text-muted-foreground">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/tag';
 import { LinkButton } from '@/components/ui/link-button';
+import { CopyLinkButton } from '@/components/copy-link-button';
 import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
@@ -216,14 +217,10 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-                  <LinkButton
-                    href={`/articles/${article.slug}`}
-                    prefetch={false}
-                    icon={<ArrowIcon className="h-4 w-4" />}
-                    className="w-full sm:w-auto"
-                  >
-                    View
+                  <LinkButton href={`/articles/${article.slug}`} prefetch={false} className="w-full sm:w-auto">
+                    Read
                   </LinkButton>
+                  <CopyLinkButton href={`/articles/${article.slug}`} />
                   <MoveToMenu articleId={article.id} currentCategory={article.category} />
                   <form
                     action={deleteArticleAction.bind(null, article.id, article.slug)}
