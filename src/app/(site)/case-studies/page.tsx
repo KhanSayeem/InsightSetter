@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/tag';
 import { prisma } from '@/lib/prisma';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
+import { ShareButton } from '@/components/share-button';
 
 export const metadata: Metadata = {
   title: 'Case Studies',
@@ -77,6 +78,9 @@ export default async function CaseStudiesPage() {
               </Link>
             </h2>
             <p className="text-sm text-muted-foreground">{excerpt(a.summary, a.content)}</p>
+            <div className="text-right">
+              <ShareButton title={a.title} url={`/articles/${a.slug}`} />
+            </div>
           </Card>
         ))}
         {articles.length === 0 && (

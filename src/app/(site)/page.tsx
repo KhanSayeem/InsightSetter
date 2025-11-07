@@ -10,6 +10,7 @@ import { LinkButton } from '@/components/ui/link-button';
 import { Tag } from '@/components/ui/tag';
 import { NewsletterForm } from '@/components/newsletter-form';
 import { ARTICLE_CATEGORY_META, RAIL_CATEGORIES } from '@/lib/article-categories';
+import { ShareButton } from '@/components/share-button';
 
 export const revalidate = 0;
 
@@ -289,7 +290,7 @@ export default async function Home() {
               <h2 className="text-2xl font-semibold leading-tight text-foreground transition group-hover:text-primary">
                 <Link href={`/articles/${featuredArticle.slug}`}>{featuredArticle.title}</Link>
               </h2>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
                   {ARTICLE_CATEGORY_META[featuredArticle.category].label}
                 </Tag>
@@ -298,6 +299,8 @@ export default async function Home() {
                     #{tag}
                   </Tag>
                 ))}
+                <span className="mx-2 text-muted-foreground/50">|</span>
+                <ShareButton title={featuredArticle.title} url={`/articles/${featuredArticle.slug}`} />
               </div>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {getExcerpt(featuredArticle.summary, featuredArticle.content, 200)}
@@ -328,24 +331,31 @@ export default async function Home() {
         ) : (
           <div className="grid gap-5 md:grid-cols-3">
             {secondaryArticles.map((article) => (
-              <Link
+              <div
                 key={article.id}
-                href={`/articles/${article.slug}`}
-                className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold leading-tight text-foreground transition group-hover:text-primary">
-                    {article.title}
-                  </h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {getExcerpt(article.summary, article.content, 160)}
-                  </p>
+                <Link
+                  href={`/articles/${article.slug}`}
+                  className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold leading-tight text-foreground transition group-hover:text-primary">
+                      {article.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {getExcerpt(article.summary, article.content, 160)}
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                    <span>{formatDate(article.publishedAt ?? article.createdAt)}</span>
+                    <span>{article.authorName}</span>
+                  </div>
+                </Link>
+                <div className="mt-2 text-right">
+                  <ShareButton title={article.title} url={`/articles/${article.slug}`} />
                 </div>
-                <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                  <span>{formatDate(article.publishedAt ?? article.createdAt)}</span>
-                  <span>{article.authorName}</span>
-                </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
@@ -393,12 +403,14 @@ export default async function Home() {
                       <p className="mt-2 text-xs text-muted-foreground">
                         {getExcerpt(item.summary, item.content, 140)}
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         {item.tags.slice(0, 3).map((tag) => (
                           <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
                             #{tag}
                           </Tag>
                         ))}
+                        <span className="mx-2 text-muted-foreground/50">|</span>
+                        <ShareButton title={item.title} url={`/articles/${item.slug}`} />
                       </div>
                     </div>
                   ))
@@ -483,13 +495,16 @@ export default async function Home() {
                     ))}
                   </div>
                 </div>
-                <LinkButton
-                  href={`/articles/${article.slug}`}
-                  className="mt-6 text-primary"
-                  icon={<ArrowIcon className="h-4 w-4" />}
-                >
-                  Read analysis
-                </LinkButton>
+                <div className="mt-6 flex items-center justify-between">
+                  <LinkButton
+                    href={`/articles/${article.slug}`}
+                    className="text-primary"
+                    icon={<ArrowIcon className="h-4 w-4" />}
+                  >
+                    Read analysis
+                  </LinkButton>
+                  <ShareButton title={article.title} url={`/articles/${article.slug}`} />
+                </div>
               </Card>
             ))}
           </div>
@@ -536,13 +551,16 @@ export default async function Home() {
                     ))}
                   </div>
                 </div>
-                <LinkButton
-                  href={`/articles/${article.slug}`}
-                  className="mt-6 text-primary"
-                  icon={<ArrowIcon className="h-4 w-4" />}
-                >
-                  Read case study
-                </LinkButton>
+                <div className="mt-6 flex items-center justify-between">
+                  <LinkButton
+                    href={`/articles/${article.slug}`}
+                    className="text-primary"
+                    icon={<ArrowIcon className="h-4 w-4" />}
+                  >
+                    Read case study
+                  </LinkButton>
+                  <ShareButton title={article.title} url={`/articles/${article.slug}`} />
+                </div>
               </Card>
             ))}
           </div>

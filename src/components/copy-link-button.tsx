@@ -20,8 +20,12 @@ export function CopyLinkButton({ href, className }: { href: string; className?: 
   }
 
   return (
-    <Button type="button" variant="secondary" size="sm" onClick={onCopy} className={className}>
+    <button
+      type="button"
+      onClick={onCopy}
+      className={['group inline-flex items-center text-sm font-semibold text-primary transition hover:text-primary/80', className].filter(Boolean).join(' ')}
+    >
       {copied ? 'Copied!' : 'Share'}
-    </Button>
+    </button>
   );
 }
