@@ -10,6 +10,8 @@ import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { prisma } from '@/lib/prisma';
 import { ViewTracker } from './view-tracker';
 import { ShareButton } from '@/components/share-button';
+import { FavoritesProvider } from '@/components/favorites-context';
+import { FavoriteButton } from '@/components/favorite-button';
 
 const dateFormatter = new Intl.DateTimeFormat('en', {
   dateStyle: 'long',
@@ -88,9 +90,10 @@ export default async function ArticlePage(props: PageParams) {
   const publishedDate = article.publishedAt ?? article.createdAt;
 
   return (
-    <article id="article-root" className="mx-auto max-w-3xl space-y-8 rounded-3xl border border-border bg-card p-8 shadow-lg">
-      <div className="space-y-4">
-        <Link
+    <FavoritesProvider>
+      <article id="article-root" className="mx-auto max-w-3xl space-y-8 rounded-3xl border border-border bg-card p-8 shadow-lg">
+        <div className="space-y-4">
+          <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"
         >
@@ -116,6 +119,8 @@ export default async function ArticlePage(props: PageParams) {
           ))}
           <span className="mx-2 text-muted-foreground/50">|</span>
           <ShareButton title={article.title} />
+          <span className="mx-1" />
+          <FavoriteButton id={article.id} />
         </div>
         {article.summary && (
           <p className="mt-2 rounded-xl border border-primary/20 bg-primary/10 p-4 text-base text-muted-foreground">
@@ -129,5 +134,6 @@ export default async function ArticlePage(props: PageParams) {
       {/* Track a view when the article becomes visible */}
       <ViewTracker articleId={article.id} />
     </article>
+    </FavoritesProvider>
   );
 }

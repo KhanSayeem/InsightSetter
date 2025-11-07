@@ -11,6 +11,8 @@ import { Tag } from '@/components/ui/tag';
 import { NewsletterForm } from '@/components/newsletter-form';
 import { ARTICLE_CATEGORY_META, RAIL_CATEGORIES } from '@/lib/article-categories';
 import { ShareButton } from '@/components/share-button';
+import { FavoritesProvider } from '@/components/favorites-context';
+import { FavoriteButton } from '@/components/favorite-button';
 
 export const revalidate = 0;
 
@@ -241,6 +243,7 @@ export default async function Home() {
   ];
 
   return (
+    <FavoritesProvider>
     <div className="space-y-16 lg:space-y-20">
       <Card
         id="briefing"
@@ -306,9 +309,12 @@ export default async function Home() {
                 {getExcerpt(featuredArticle.summary, featuredArticle.content, 200)}
               </p>
             </div>
-            <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              Read the full note
-              <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <div className="mt-6 flex items-center justify-between text-sm font-semibold text-primary">
+              <span className="inline-flex items-center gap-2">
+                Read the full note
+                <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </span>
+              <FavoriteButton id={featuredArticle.id} />
             </div>
           </article>
         </div>
@@ -352,8 +358,9 @@ export default async function Home() {
                     <span>{article.authorName}</span>
                   </div>
                 </Link>
-                <div className="mt-2 text-right">
+                <div className="mt-2 flex items-center justify-between">
                   <ShareButton title={article.title} url={`/articles/${article.slug}`} />
+                  <FavoriteButton id={article.id} stopNavigation />
                 </div>
               </div>
             ))}
@@ -403,14 +410,17 @@ export default async function Home() {
                       <p className="mt-2 text-xs text-muted-foreground">
                         {getExcerpt(item.summary, item.content, 140)}
                       </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                         {item.tags.slice(0, 3).map((tag) => (
                           <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
                             #{tag}
                           </Tag>
                         ))}
                         <span className="mx-2 text-muted-foreground/50">|</span>
-                        <ShareButton title={item.title} url={`/articles/${item.slug}`} />
+                        <div className="flex items-center gap-3">
+                          <ShareButton title={item.title} url={`/articles/${item.slug}`} />
+                          <FavoriteButton id={item.id} stopNavigation />
+                        </div>
                       </div>
                     </div>
                   ))
@@ -503,7 +513,10 @@ export default async function Home() {
                   >
                     Read analysis
                   </LinkButton>
-                  <ShareButton title={article.title} url={`/articles/${article.slug}`} />
+                  <div className="flex items-center gap-3">
+                    <ShareButton title={article.title} url={`/articles/${article.slug}`} />
+                    <FavoriteButton id={article.id} stopNavigation />
+                  </div>
                 </div>
               </Card>
             ))}
@@ -559,7 +572,10 @@ export default async function Home() {
                   >
                     Read case study
                   </LinkButton>
-                  <ShareButton title={article.title} url={`/articles/${article.slug}`} />
+                  <div className="flex items-center gap-3">
+                    <ShareButton title={article.title} url={`/articles/${article.slug}`} />
+                    <FavoriteButton id={article.id} stopNavigation />
+                  </div>
                 </div>
               </Card>
             ))}
@@ -596,5 +612,6 @@ export default async function Home() {
         </div>
       </section>
     </div>
+    </FavoritesProvider>
   );
 }

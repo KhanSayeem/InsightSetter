@@ -8,6 +8,8 @@ import { Tag } from '@/components/ui/tag';
 import { prisma } from '@/lib/prisma';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { ShareButton } from '@/components/share-button';
+import { FavoritesProvider } from '@/components/favorites-context';
+import { FavoriteButton } from '@/components/favorite-button';
 
 export const metadata: Metadata = {
   title: 'Case Studies',
@@ -51,6 +53,7 @@ export default async function CaseStudiesPage() {
   });
 
   return (
+    <FavoritesProvider>
     <section className="space-y-8">
       <header className="space-y-3">
         <Tag variant="primary" className="w-fit tracking-[0.3em] text-primary/80">
@@ -78,8 +81,9 @@ export default async function CaseStudiesPage() {
               </Link>
             </h2>
             <p className="text-sm text-muted-foreground">{excerpt(a.summary, a.content)}</p>
-            <div className="text-right">
+            <div className="flex items-center justify-between">
               <ShareButton title={a.title} url={`/articles/${a.slug}`} />
+              <FavoriteButton id={a.id} />
             </div>
           </Card>
         ))}
@@ -88,5 +92,6 @@ export default async function CaseStudiesPage() {
         )}
       </div>
     </section>
+    </FavoritesProvider>
   );
 }

@@ -8,12 +8,14 @@ import { Facebook, Instagram, Linkedin, Twitter, Menu, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ButtonLink } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
+import { FavoritesProvider } from '@/components/favorites-context';
 
 const navigation = [
   { href: '/#briefing', label: 'Briefing' },
   { href: '/#fast-takes', label: 'Fast Takes' },
   { href: '/#rails', label: 'Tracks' },
   { href: '/case-studies', label: 'Case Studies' },
+  { href: '/favorites', label: 'Favorites' },
   { href: '/#community', label: 'Community' },
   { href: '/submit', label: 'Submit' },
 ];
@@ -102,7 +104,9 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 sm:px-8 lg:px-10">
-        <div className="mx-auto w-full max-w-5xl">{children}</div>
+        <FavoritesProvider>
+          <div className="mx-auto w-full max-w-5xl">{children}</div>
+        </FavoritesProvider>
       </main>
 
       <footer className="border-t border-border/60 bg-background/90">
