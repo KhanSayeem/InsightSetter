@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { SVGProps } from 'react';
+import Link from 'next/link';
 
 import { ArticleStatus, SubscriberStatus } from '@prisma/client';
 
@@ -174,6 +175,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     publishedLast7Days,
     queuedByCategory,
     publishedByCategory,
+    topCountries,
+    topViewedGroups,
   ] = await Promise.all([
     prisma.article.count({
       where: { createdAt: { gte: sevenDaysAgo } },
@@ -197,7 +200,43 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         publishedAt: { gte: thirtyDaysAgo },
       },
     }),
+    prisma.pageView.groupBy({
+      by: ['countryCode'],
+      where: {
+        occurredAt: { gte: thirtyDaysAgo },
+        isBot: false,
+      },
+      _count: { _all: true },
+      // Order by size of group
+      orderBy: { _count: { articleId: 'desc' } },
+      take: 6,
+    }),
+    prisma.pageView.groupBy({
+      by: ['articleId'],
+      where: {
+        occurredAt: { gte: thirtyDaysAgo },
+        isBot: false,
+      },
+      _count: { _all: true },
+      orderBy: { _count: { articleId: 'desc' } },
+      take: 6,
+    }),
   ]);
+
+  // Resolve article metadata for most-viewed list while preserving order
+  const topIds = topViewedGroups.map((g) => g.articleId);
+  const topArticles = topIds.length
+    ? await prisma.article.findMany({
+        where: { id: { in: topIds } },
+        select: { id: true, title: true, slug: true, category: true },
+      })
+    : [];
+  const topArticleById = new Map(topArticles.map((a) => [a.id, a] as const));
+  const mostViewed = topViewedGroups
+    .map((g) => ({ article: topArticleById.get(g.articleId), views: g._count._all }))
+    .filter((x): x is { article: { id: string; title: string; slug: string; category: any }; views: number } =>
+      Boolean(x.article),
+    );
 
   // Third batch: Review data and tags
   const [reviewDurations, tagSamples] = await Promise.all([
@@ -410,29 +449,71 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </div>
           </Card>
 
-          <Card className="space-y-4 rounded-2xl border border-border/70 p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground">Top tags (30d)</h3>
-            {topTags.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Encourage contributors to add tags so readers can find related stories.
-              </p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {topTags.map(([tag, count]) => (
-                  <li key={tag} className="flex items-center justify-between">
-                    <span className="lowercase text-muted-foreground">#{tag}</span>
-                    <span className="font-semibold text-foreground">{count}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="border-t border-border/70 pt-4">
-              <h4 className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                Send digest
-              </h4>
-              <DigestSenderForm subscribers={digestRecipients} />
-            </div>
-          </Card>
+          <div className="space-y-5">
+            <Card className="space-y-4 rounded-2xl border border-border/70 p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-foreground">Top tags (30d)</h3>
+              {topTags.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Encourage contributors to add tags so readers can find related stories.
+                </p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {topTags.map(([tag, count]) => (
+                    <li key={tag} className="flex items-center justify-between">
+                      <span className="lowercase text-muted-foreground">#{tag}</span>
+                      <span className="font-semibold text-foreground">{count}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            <Card className="space-y-3 rounded-2xl border border-border/70 p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-foreground">Most viewed (30d)</h3>
+              {mostViewed.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No view data yet.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {mostViewed.map(({ article, views }) => (
+                    <li key={article.id} className="flex items-center justify-between gap-3">
+                      <Link href={`/articles/${article.slug}`} className="truncate text-muted-foreground hover:text-foreground hover:underline">
+                        {article.title}
+                      </Link>
+                      <span className="shrink-0 font-semibold text-foreground">{views}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="pt-2 text-right">
+<LinkButton href="/admin/analytics/views">View all →</LinkButton>
+              </div>
+            </Card>
+
+            <Card className="space-y-3 rounded-2xl border border-border/70 p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-foreground">Top countries (30d)</h3>
+              {topCountries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No view data yet.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {topCountries.map((row) => (
+                    <li key={row.countryCode ?? '??'} className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{row.countryCode ?? 'Unknown'}</span>
+                      <span className="font-semibold text-foreground">{row._count._all}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="pt-2 text-right">
+<LinkButton href="/admin/analytics/countries">View all →</LinkButton>
+              </div>
+              <div className="border-t border-border/70 pt-4">
+                <h4 className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                  Send digest
+                </h4>
+                <DigestSenderForm subscribers={digestRecipients} />
+              </div>
+            </Card>
+          </div>
         </div>
       </section>
 

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ArticleCategory" ADD VALUE IF NOT EXISTS 'CASE_STUDY';

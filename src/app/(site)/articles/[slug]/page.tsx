@@ -8,6 +8,7 @@ import { ArticleStatus } from '@prisma/client';
 import { Tag } from '@/components/ui/tag';
 import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { prisma } from '@/lib/prisma';
+import { ViewTracker } from './view-tracker';
 
 const dateFormatter = new Intl.DateTimeFormat('en', {
   dateStyle: 'long',
@@ -86,7 +87,7 @@ export default async function ArticlePage(props: PageParams) {
   const publishedDate = article.publishedAt ?? article.createdAt;
 
   return (
-    <article className="mx-auto max-w-3xl space-y-8 rounded-3xl border border-border bg-card p-8 shadow-lg">
+    <article id="article-root" className="mx-auto max-w-3xl space-y-8 rounded-3xl border border-border bg-card p-8 shadow-lg">
       <div className="space-y-4">
         <Link
           href="/"
@@ -122,6 +123,8 @@ export default async function ArticlePage(props: PageParams) {
       <div className="space-y-4 text-base leading-7 text-muted-foreground">
         <div className="whitespace-pre-wrap text-foreground">{article.content}</div>
       </div>
+      {/* Track a view when the article becomes visible */}
+      <ViewTracker articleId={article.id} />
     </article>
   );
 }

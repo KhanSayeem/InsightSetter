@@ -26,6 +26,9 @@ model Article {
   reviewNotes String?
   category    ArticleCategory @default(MARKETS_MACRO)
   tags        String[]        @default([])
+
+  // Relations
+  pageViews   PageView[]
 }
 
 model Subscriber {
@@ -35,6 +38,20 @@ model Subscriber {
   createdAt      DateTime         @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
   unsubscribedAt DateTime?        @db.Timestamptz(6)
+}
+
+model PageView {
+  id          String    @id @default(cuid())
+  article     Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId   String
+  occurredAt  DateTime  @default(now()) @db.Timestamptz(6)
+  countryCode String?   @db.Char(2)
+  isBot       Boolean   @default(false)
+
+  @@index([articleId, occurredAt])
+  @@index([articleId, countryCode])
+  @@index([occurredAt])
+  @@index([countryCode])
 }
 
 enum ArticleStatus {

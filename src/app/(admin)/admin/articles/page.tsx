@@ -104,6 +104,15 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
     prisma.article.count({ where }),
   ]);
 
+  // Fetch view counts for the current page of articles
+  const ids = articles.map(a => a.id);
+  const viewGroups = ids.length > 0 ? await prisma.pageView.groupBy({
+    by: ['articleId'],
+    where: { articleId: { in: ids }, isBot: false },
+    _count: { _all: true },
+  }) : [];
+  const viewCountMap = new Map<string, number>(viewGroups.map(g => [g.articleId, g._count._all]));
+
   const totalPages = Math.ceil(totalCount / perPage);
 
   return (
@@ -187,18 +196,23 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
                     <span className="mx-1 text-muted-foreground/60">|</span>
                     <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{article.slug}</code>
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Tag variant="outline" className="border-border/70 bg-background/70 px-3 py-1 text-xs">
                       {ARTICLE_CATEGORY_META[article.category].label}
                     </Tag>
-                    {article.tags.slice(0, 3).map((tag) => (
-                      <Tag key={tag} variant="muted" className="px-2 py-1 text-xs lowercase">
-                        #{tag}
-                      </Tag>
-                    ))}
-                    {article.tags.length > 3 && (
-                      <span className="text-xs text-muted-foreground">+{article.tags.length - 3} more</span>
-                    )}
+                    <span className="text-xs text-muted-foreground">
+                      Views: {viewCountMap.get(article.id) ?? 0}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {article.tags.slice(0, 3).map((tag) => (
+                        <Tag key={tag} variant="muted" className="px-2 py-1 text-xs lowercase">
+                          #{tag}
+                        </Tag>
+                      ))}
+                      {article.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">+{article.tags.length - 3} more</span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
