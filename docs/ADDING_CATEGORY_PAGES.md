@@ -1,185 +1,44 @@
-# Adding New Category Pages
+# Adding Category Pages
 
-This guide explains how to add new category pages (like `/case-studies`, `/deep-dives`, etc.) to ensure they work seamlessly with the admin "Move to" functionality.
+The publication now treats categories as first-class records in the database instead of compile-time enums. Every reader surface (home rails, article cards, navigation, newsletter digests, etc.) reads from the `Category` table, so creating a new category is a content operation rather than a code change.
 
-## Prerequisites
+## 1. Create the category
 
-1. Ensure your category exists in the `ArticleCategory` enum in `prisma/schema.prisma`
-2. Add the category metadata to `src/lib/article-categories.ts` in the `ARTICLE_CATEGORY_META` object
+1. Sign in to `/admin`.
+2. Open `/admin/categories`.
+3. Fill out the form:
+   - **Display name** – Shown across the UI.
+   - **Slug** – Becomes the URL under `/categories/[slug]`. Leave blank to auto-generate from the name.
+   - **Description** – Appears on the category landing page and in the admin dashboard.
+   - **Homepage rail title** *(optional)* – If set, the category will show up in the curated “Tracks” section on the homepage with this heading.
+4. Submit the form. The layout, nav menu, and `/categories/[slug]` page will revalidate automatically.
 
-## Steps to Add a New Category Page
+## 2. Link to the page
 
-### 1. Update the Category Routes Map
+Readers can now visit `/categories/<your-slug>` where a dynamic page lists every published article assigned to the category. You can:
 
-In `src/app/(admin)/admin/actions.ts`, update the `CATEGORY_ROUTES` constant:
+- Drop the URL anywhere in the marketing site.
+- Update navigation (if you want a top-level link) by editing `src/components/site-shell.tsx`.
+- Reference it in newsletters or social posts—the route is pre-rendered on first request and stays in sync with future moves.
 
-```typescript
-const CATEGORY_ROUTES: Record<ArticleCategory, string> = {
-  MARKETS_MACRO: '/markets-macro',
-  OPERATORS: '/operators',
-  CAPITAL_STRATEGY: '/capital-strategy',
-  FAST_TAKE: '/fast-takes',
-  DEEP_DIVE: '/deep-dives',
-  CASE_STUDY: '/case-studies',
-  // Add your new category here:
-  // YOUR_NEW_CATEGORY: '/your-route-path',
-};
-```
+## 3. Highlight it on the homepage (optional)
 
-### 2. Create the Category Page
+If you want the category to appear in the “Tracks” rail on the homepage:
 
-Create a new page at `src/app/(site)/[your-category-slug]/page.tsx` using this template:
+- Provide a **Homepage rail title** in the admin form.
+- Add a compelling description so the card doesn’t render empty copy.
+- Publish or move a few articles into the category so the carousel has content.
 
-```typescript
-import Link from 'next/link';
-import type { Metadata } from 'next';
-import type { Prisma } from '@prisma/client';
-import { ArticleCategory, ArticleStatus } from '@prisma/client';
+## 4. Assign articles
 
-import { Card } from '@/components/ui/card';
-import { Tag } from '@/components/ui/tag';
-import { prisma } from '@/lib/prisma';
-import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
+Use either submission flow or the admin Move menu:
 
-export const metadata: Metadata = {
-  title: 'Your Category Title',
-  description: 'Your category description',
-};
+1. From `/admin` or `/admin/articles`, click “Move to …”.
+2. Pick the newly created category.
+3. The system revalidates `/`, `/categories/[slug]`, `/admin`, and (if applicable) `/case-studies`.
 
-const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
+All forms (`/submit`, `/admin/submit`) and the API now read categories from the database, so writers can immediately file into the new bucket without another deploy.
 
-function excerpt(summary: string | null, content: string, len = 200) {
-  const src = (summary ?? content).trim();
-  return src.length <= len ? src : `${src.slice(0, len - 3)}...`;
-}
+## When do I need custom code?
 
-// IMPORTANT: These exports prevent caching issues
-export const revalidate = 0;
-export const dynamic = 'force-dynamic';
-
-export default async function YourCategoryPage() {
-  const select = {
-    id: true,
-    title: true,
-    summary: true,
-    content: true,
-    slug: true,
-    authorName: true,
-    publishedAt: true,
-    createdAt: true,
-    tags: true,
-  } as const satisfies Prisma.ArticleSelect;
-
-  const articles = await prisma.article.findMany({
-    where: {
-      status: ArticleStatus.PUBLISHED,
-      // Option 1: Simple category filter
-      category: ArticleCategory.YOUR_CATEGORY,
-      
-      // Option 2: Category + tags filter (like case-studies does)
-      // OR: [
-      //   { category: ArticleCategory.YOUR_CATEGORY },
-      //   {
-      //     tags: {
-      //       hasSome: ['your-tag', 'Your Tag', 'another-tag'],
-      //     },
-      //   },
-      // ],
-    },
-    orderBy: [
-      { publishedAt: 'desc' },
-      { createdAt: 'desc' },
-    ],
-    select,
-  });
-
-  return (
-    <section className="space-y-8">
-      <header className="space-y-3">
-        <Tag variant="primary" className="w-fit tracking-[0.3em] text-primary/80">
-          {ARTICLE_CATEGORY_META.YOUR_CATEGORY.label}
-        </Tag>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Your Category Title
-        </h1>
-        <p className="max-w-2xl text-muted-foreground">
-          {ARTICLE_CATEGORY_META.YOUR_CATEGORY.description}
-        </p>
-      </header>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        {articles.map((a) => (
-          <Card key={a.id} className="group space-y-3 p-6 shadow-md">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-              <span>{dateFmt.format(a.publishedAt ?? a.createdAt)}</span>
-              <span className="text-muted-foreground/50">|</span>
-              <span>{a.authorName}</span>
-            </div>
-            <h2 className="text-xl font-semibold leading-tight">
-              <Link href={`/articles/${a.slug}`} className="transition hover:text-primary">
-                {a.title}
-              </Link>
-            </h2>
-            <p className="text-sm text-muted-foreground">{excerpt(a.summary, a.content)}</p>
-          </Card>
-        ))}
-        {articles.length === 0 && (
-          <p className="text-sm text-muted-foreground">No articles published yet.</p>
-        )}
-      </div>
-    </section>
-  );
-}
-```
-
-## Key Points
-
-### ⚠️ Critical for "Move to" Functionality
-
-1. **Add route to `CATEGORY_ROUTES`**: This ensures the page gets revalidated when articles are moved
-2. **Include `export const dynamic = 'force-dynamic'`**: Prevents caching issues in dev and production
-3. **Include `export const revalidate = 0`**: Additional cache control
-
-### Automatic Features
-
-Once you follow the steps above, the following will work automatically:
-
-- ✅ Articles can be moved to your new category from the admin panel
-- ✅ The "Move to →" dropdown will include your new category
-- ✅ Cache invalidation happens automatically when articles are moved
-- ✅ Category label/description comes from `ARTICLE_CATEGORY_META`
-
-## Example: Adding a "Deep Dives" Page
-
-1. Update `CATEGORY_ROUTES`:
-```typescript
-const CATEGORY_ROUTES: Record<ArticleCategory, string> = {
-  // ... existing routes
-  DEEP_DIVE: '/deep-dives',
-};
-```
-
-2. Create `src/app/(site)/deep-dives/page.tsx` following the template above
-
-3. Replace `YOUR_CATEGORY` with `DEEP_DIVE` in the template
-
-4. Done! The admin "Move to" functionality will automatically include "Deep Dives"
-
-## Troubleshooting
-
-If articles don't appear after moving:
-
-1. Check that `CATEGORY_ROUTES` includes your route
-2. Verify `export const dynamic = 'force-dynamic'` is present
-3. Hard refresh the page (Ctrl+Shift+R)
-4. Restart the dev server
-
-## Testing
-
-After adding a new category page:
-
-1. Navigate to `/admin`
-2. Click "Move to →" on any published article
-3. Confirm your new category appears in the dropdown
-4. Move an article to your category
-5. Visit your new category page and verify the article appears
+Only if the category requires a bespoke layout that differs from the shared template at `src/app/(site)/categories/[slug]/page.tsx`. In that case, create a dedicated route (e.g., `/special-series`) and reuse the data fetching logic, but most categories should rely on the dynamic page and require **zero** code changes.

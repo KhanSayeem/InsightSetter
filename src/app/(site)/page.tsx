@@ -2,14 +2,15 @@ import Link from 'next/link';
 import type { SVGProps } from 'react';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { ArticleStatus, ArticleCategory } from '@prisma/client';
+import { ArticleStatus } from '@prisma/client';
 
 import { ButtonLink } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LinkButton } from '@/components/ui/link-button';
 import { Tag } from '@/components/ui/tag';
 import { NewsletterForm } from '@/components/newsletter-form';
-import { ARTICLE_CATEGORY_META, RAIL_CATEGORIES } from '@/lib/article-categories';
+import { getAllCategories } from '@/lib/article-categories';
+import type { CategorySummary } from '@/lib/article-categories';
 import { ShareButton } from '@/components/share-button';
 import { FavoritesProvider } from '@/components/favorites-context';
 import { FavoriteButton } from '@/components/favorite-button';
@@ -76,13 +77,19 @@ export default async function Home() {
       authorName: true,
       publishedAt: true,
       createdAt: true,
-      category: true,
+      category: {
+        select: {
+          id: true,
+          label: true,
+          slug: true,
+        },
+      },
       tags: true,
     } as const satisfies Prisma.ArticleSelect;
 
     type ArticlePreview = Prisma.ArticleGetPayload<{ select: typeof articleSelect }>;
     type RailBucket = {
-      category: ArticleCategory;
+      category: CategorySummary;
       articles: ArticlePreview[];
     };
 
@@ -109,32 +116,39 @@ export default async function Home() {
       return null;
     }
 
-    // Get all categories dynamically
-    const allCategoryKeys = Object.keys(ARTICLE_CATEGORY_META) as ArticleCategory[];
-    
+    const categories = await getAllCategories();
+    const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
+    const railCategories = categories.filter((category) => Boolean(category.railTitle));
+
+    const fastTakeCategory = categoryBySlug.get('fast-takes');
+    const deepDiveCategory = categoryBySlug.get('deep-dives');
+    const caseStudyCategory = categoryBySlug.get('case-studies');
+
     const [fastTakeArticles, allCategoryBuckets, deepDiveArticles, caseStudyArticles]: [
       ArticlePreview[],
       RailBucket[],
       ArticlePreview[],
       ArticlePreview[],
     ] = await Promise.all([
-      prisma.article.findMany({
-        where: {
-          status: ArticleStatus.PUBLISHED,
-          category: ArticleCategory.FAST_TAKE,
-        },
-        orderBy: [
-          { publishedAt: 'desc' },
-          { createdAt: 'desc' },
-        ],
-        take: 6,
-        select: articleSelect,
-      }),
+      fastTakeCategory
+        ? prisma.article.findMany({
+            where: {
+              status: ArticleStatus.PUBLISHED,
+              categoryId: fastTakeCategory.id,
+            },
+            orderBy: [
+              { publishedAt: 'desc' },
+              { createdAt: 'desc' },
+            ],
+            take: 6,
+            select: articleSelect,
+          })
+        : Promise.resolve([]),
       Promise.all(
-        RAIL_CATEGORIES.map(async (category): Promise<RailBucket> => ({
+        railCategories.map(async (category): Promise<RailBucket> => ({
           category,
           articles: await prisma.article.findMany({
-            where: { status: ArticleStatus.PUBLISHED, category },
+            where: { status: ArticleStatus.PUBLISHED, categoryId: category.id },
             orderBy: [
               { publishedAt: 'desc' },
               { createdAt: 'desc' },
@@ -144,30 +158,34 @@ export default async function Home() {
           }),
         })),
       ),
-      prisma.article.findMany({
-        where: {
-          status: ArticleStatus.PUBLISHED,
-          category: ArticleCategory.DEEP_DIVE,
-        },
-        orderBy: [
-          { publishedAt: 'desc' },
-          { createdAt: 'desc' },
-        ],
-        take: 4,
-        select: articleSelect,
-      }),
-      prisma.article.findMany({
-        where: {
-          status: ArticleStatus.PUBLISHED,
-          category: ArticleCategory.CASE_STUDY,
-        },
-        orderBy: [
-          { publishedAt: 'desc' },
-          { createdAt: 'desc' },
-        ],
-        take: 4,
-        select: articleSelect,
-      }),
+      deepDiveCategory
+        ? prisma.article.findMany({
+            where: {
+              status: ArticleStatus.PUBLISHED,
+              categoryId: deepDiveCategory.id,
+            },
+            orderBy: [
+              { publishedAt: 'desc' },
+              { createdAt: 'desc' },
+            ],
+            take: 4,
+            select: articleSelect,
+          })
+        : Promise.resolve([]),
+      caseStudyCategory
+        ? prisma.article.findMany({
+            where: {
+              status: ArticleStatus.PUBLISHED,
+              categoryId: caseStudyCategory.id,
+            },
+            orderBy: [
+              { publishedAt: 'desc' },
+              { createdAt: 'desc' },
+            ],
+            take: 4,
+            select: articleSelect,
+          })
+        : Promise.resolve([]),
     ]);
 
     const secondaryArticles =
@@ -182,12 +200,21 @@ export default async function Home() {
 
     const rails = allCategoryBuckets.map(({ category, articles }) => ({
       category,
-      title: ARTICLE_CATEGORY_META[category].railTitle ?? ARTICLE_CATEGORY_META[category].label,
-      description: ARTICLE_CATEGORY_META[category].description,
+      title: category.railTitle ?? category.label,
+      description: category.description ?? 'Latest analysis from this track.',
       articles,
     }));
 
-    return { latestArticles, featuredArticle, secondaryArticles, deepDives, caseStudies, rails };
+    return {
+      latestArticles,
+      featuredArticle,
+      secondaryArticles,
+      deepDives,
+      caseStudies,
+      caseStudyLabel: caseStudyCategory?.label ?? 'Case Studies',
+      caseStudySlug: caseStudyCategory?.slug ?? 'case-studies',
+      rails,
+    };
   };
 
   const articleData = await loadArticles();
@@ -222,7 +249,15 @@ export default async function Home() {
     );
   }
 
-  const { featuredArticle, secondaryArticles, deepDives, caseStudies, rails } = articleData;
+  const {
+    featuredArticle,
+    secondaryArticles,
+    deepDives,
+    caseStudies,
+    caseStudyLabel,
+    caseStudySlug,
+    rails,
+  } = articleData;
 
   const communitySignals = [
     {
@@ -294,9 +329,11 @@ export default async function Home() {
                 <Link href={`/articles/${featuredArticle.slug}`}>{featuredArticle.title}</Link>
               </h2>
               <div className="flex flex-wrap items-center gap-2">
-                <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
-                  {ARTICLE_CATEGORY_META[featuredArticle.category].label}
-                </Tag>
+                {featuredArticle.category ? (
+                  <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
+                    {featuredArticle.category.label}
+                  </Tag>
+                ) : null}
                 {featuredArticle.tags.map((tag) => (
                   <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
                     #{tag}
@@ -382,13 +419,15 @@ export default async function Home() {
         </header>
         <div className="grid gap-6 md:grid-cols-3">
           {rails.map(({ category, title, description, articles }) => (
-            <Card key={category} as="article" className="flex h-full flex-col gap-4 p-6 shadow-sm">
+            <Card key={category.id} as="article" className="flex h-full flex-col gap-4 p-6 shadow-sm">
               <div className="space-y-3">
                 <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
-                  {ARTICLE_CATEGORY_META[category].label}
+                  {category.label}
                 </Tag>
                 <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-                <p className="text-sm text-muted-foreground">{description}</p>
+                {description ? (
+                  <p className="text-sm text-muted-foreground">{description}</p>
+                ) : null}
               </div>
               <div className="space-y-4">
                 {articles.length === 0 ? (
@@ -495,9 +534,11 @@ export default async function Home() {
                     {getExcerpt(article.summary, article.content, 220)}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
-                      {ARTICLE_CATEGORY_META[article.category].label}
-                    </Tag>
+                    {article.category ? (
+                      <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
+                        {article.category.label}
+                      </Tag>
+                    ) : null}
                     {article.tags.slice(0, 4).map((tag) => (
                       <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
                         #{tag}
@@ -529,12 +570,12 @@ export default async function Home() {
           <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                {ARTICLE_CATEGORY_META.CASE_STUDY.label}
+                {caseStudyLabel}
               </p>
               <h2 className="text-2xl font-semibold text-foreground">Real-world playbooks</h2>
             </div>
-            <LinkButton href="/case-studies" icon={<ArrowIcon className="h-4 w-4" />}>
-              View all case studies
+            <LinkButton href={`/categories/${caseStudySlug}`} icon={<ArrowIcon className="h-4 w-4" />}>
+              View all {caseStudyLabel.toLowerCase()}
             </LinkButton>
           </header>
           <div className="grid gap-6 md:grid-cols-2">

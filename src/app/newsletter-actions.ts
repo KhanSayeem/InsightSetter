@@ -9,7 +9,6 @@ import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
 import { renderNewsletterDigestEmail } from '@/emails/newsletter-digest';
 import { renderNewsletterWelcomeEmail } from '@/emails/newsletter-welcome';
-import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFrom = process.env.RESEND_FROM_EMAIL;
@@ -120,7 +119,11 @@ export async function sendDigestAction(
       title: true,
       summary: true,
       slug: true,
-      category: true,
+      category: {
+        select: {
+          label: true,
+        },
+      },
       tags: true,
       publishedAt: true,
       createdAt: true,
@@ -165,7 +168,7 @@ export async function sendDigestAction(
     title: article.title,
     summary: article.summary,
     slug: article.slug,
-    categoryLabel: ARTICLE_CATEGORY_META[article.category].label,
+    categoryLabel: article.category?.label ?? 'InsightSetter',
     publishedAt: (article.publishedAt ?? article.createdAt).toISOString(),
     tags: article.tags,
   }));

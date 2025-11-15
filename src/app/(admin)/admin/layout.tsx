@@ -13,6 +13,7 @@ const navLinks = [
   { href: '/admin#analytics', label: 'Analytics' },
   { href: '/admin#queue', label: 'Queue' },
   { href: '/admin#recent', label: 'Recently published' },
+  { href: '/admin/categories', label: 'Categories' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

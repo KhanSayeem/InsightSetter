@@ -22,8 +22,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'articleId required' }, { status: 400 });
     }
 
-    // Verify article exists (helps identify stale/invalid IDs)
-    const exists = await prisma.article.findUnique({ where: { id: articleId }, select: { id: true, slug: true, status: true } });
+    const exists = await prisma.article.findUnique({
+      where: { id: articleId },
+      select: { id: true, slug: true, status: true },
+    });
     if (!exists) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[page-view] article not found for id', { articleId });
@@ -31,7 +33,6 @@ export async function POST(request: Request) {
       return new NextResponse(null, { status: 204 });
     }
 
-    // Insert event; log failures in dev (e.g., foreign key if articleId is invalid)
     try {
       await prisma.pageView.create({
         data: {
@@ -45,12 +46,16 @@ export async function POST(request: Request) {
       }
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
-        console.warn('[page-view] failed to insert', { articleId, country, err: (err as Error)?.message });
+        console.warn('[page-view] failed to insert', {
+          articleId,
+          country,
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
+  } catch {
     return new NextResponse(null, { status: 204 });
   }
 }

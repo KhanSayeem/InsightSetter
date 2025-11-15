@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { Prisma } from '@prisma/client';
 
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/tag';
@@ -11,25 +10,51 @@ import { FavoritesProvider } from '@/components/favorites-context';
 import { FavoriteButton } from '@/components/favorite-button';
 import { ShareButton } from '@/components/share-button';
 
-export default function FavoritesPageClient() {
-  const [ids, setIds] = useState<string[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+type FavoriteItem = {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string;
+  tags: string[];
+  category: { label: string | null } | null;
+};
 
-  useEffect(() => {
+export default function FavoritesPageClient() {
+  const [ids, setIds] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem('insightsetter:favorites');
-      const arr = raw ? (JSON.parse(raw) as string[]) : [];
-      setIds(arr);
+      return raw ? (JSON.parse(raw) as string[]) : [];
     } catch {
-      setIds([]);
+      return [];
     }
+  });
+  const [items, setItems] = useState<FavoriteItem[]>([]);
+
+  useEffect(() => {
+    const readIds = () => {
+      try {
+        const raw = localStorage.getItem('insightsetter:favorites');
+        setIds(raw ? (JSON.parse(raw) as string[]) : []);
+      } catch {
+        setIds([]);
+      }
+    };
+
+    window.addEventListener('storage', readIds);
+    window.addEventListener('favorites:changed', readIds as EventListener);
+    return () => {
+      window.removeEventListener('storage', readIds);
+      window.removeEventListener('favorites:changed', readIds as EventListener);
+    };
   }, []);
 
   useEffect(() => {
     if (ids.length === 0) {
-      setItems([]);
+      Promise.resolve().then(() => setItems([]));
       return;
     }
+    let cancelled = false;
     (async () => {
       const res = await fetch('/api/articles/by-ids', {
         method: 'POST',
@@ -37,8 +62,14 @@ export default function FavoritesPageClient() {
         body: JSON.stringify({ ids }),
       });
       const data = await res.json();
-      setItems(data.items ?? []);
+      if (!cancelled) {
+        const payload = Array.isArray(data.items) ? (data.items as FavoriteItem[]) : [];
+        setItems(payload);
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [ids]);
 
   return (
@@ -62,9 +93,11 @@ export default function FavoritesPageClient() {
                     {(article.summary ?? article.content)?.slice(0, 200)}{(article.summary ?? article.content)?.length > 200 ? '…' : ''}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
-                      {article.category}
-                    </Tag>
+                    {article.category?.label ? (
+                      <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs">
+                        {article.category.label}
+                      </Tag>
+                    ) : null}
                     {article.tags?.slice(0, 3)?.map((t: string) => (
                       <Tag key={t} variant="muted" className="px-3 py-1 text-xs lowercase">#{t}</Tag>
                     ))}

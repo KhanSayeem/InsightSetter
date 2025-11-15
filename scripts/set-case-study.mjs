@@ -1,4 +1,4 @@
-import { PrismaClient, ArticleCategory } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -14,7 +14,13 @@ if (!article) {
   process.exit(0);
 }
 
-await prisma.article.update({ where: { id: article.id }, data: { category: ArticleCategory.CASE_STUDY } });
+const category = await prisma.category.findUnique({ where: { slug: 'case-studies' }, select: { id: true } });
+if (!category) {
+  console.error("Category 'case-studies' not found.");
+  process.exit(1);
+}
+
+await prisma.article.update({ where: { id: article.id }, data: { categoryId: category.id } });
 
 const updated = await prisma.article.findUnique({ where: { id: article.id }, select: { id: true, category: true } });
 console.log(updated);

@@ -1,6 +1,6 @@
 'use server';
 
-import { ArticleStatus, ArticleCategory } from '@prisma/client';
+import { ArticleStatus } from '@prisma/client';
 import {
   clearAdminSession,
   establishAdminSession,
@@ -11,7 +11,6 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { slugify } from '@/lib/slugify';
-import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import type { FormActionState } from '@/app/actions';
 
 export type AdminAuthState = {
@@ -135,34 +134,32 @@ export async function deleteArticleAction(articleId: string, slug: string) {
   }
 }
 
-// Map of category to route paths for revalidation
-const CATEGORY_ROUTES: Record<ArticleCategory, string> = {
-  MARKETS_MACRO: '/markets-macro',
-  OPERATORS: '/operators',
-  CAPITAL_STRATEGY: '/capital-strategy',
-  FAST_TAKE: '/fast-takes',
-  DEEP_DIVE: '/deep-dives',
-  CASE_STUDY: '/case-studies',
-};
-
-export async function moveArticleToCategoryAction(articleId: string, category: ArticleCategory) {
+export async function moveArticleToCategoryAction(articleId: string, categoryId: string) {
   await ensureAdmin();
+
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { id: true, slug: true },
+  });
+
+  if (!category) {
+    throw new Error('Category not found');
+  }
 
   const article = await prisma.article.update({
     where: { id: articleId },
-    data: { category },
+    data: { categoryId: category.id },
     select: { slug: true },
   });
 
   // Aggressively revalidate all relevant paths
   revalidatePath('/', 'layout');
   revalidatePath(ADMIN_HOME, 'page');
-  
-  // Revalidate all category pages dynamically
-  Object.values(CATEGORY_ROUTES).forEach(route => {
-    revalidatePath(route, 'page');
-  });
-  
+  revalidatePath(`/categories/${category.slug}`, 'page');
+  if (category.slug === 'case-studies') {
+    revalidatePath('/case-studies', 'page');
+  }
+
   if (article.slug) {
     revalidatePath(`/articles/${article.slug}`, 'page');
   }
@@ -219,16 +216,16 @@ export async function submitAdminArticleAction(
     errors.content = 'Article body is required.';
   }
 
-  const categoryValues = new Set(Object.keys(ARTICLE_CATEGORY_META));
-  if (!categoryInput || !categoryValues.has(categoryInput)) {
+  const categoryRecord = categoryInput
+    ? await prisma.category.findUnique({ where: { id: categoryInput }, select: { id: true } })
+    : null;
+  if (!categoryRecord) {
     errors.category = 'Pick the category that best fits the insight.';
   }
 
   if (tags.length > 5) {
     errors.tags = 'Keep it to five tags so the story stays focused.';
   }
-
-  const category = categoryInput as ArticleCategory;
 
   if (Object.keys(errors).length > 0) {
     return {
@@ -245,7 +242,7 @@ export async function submitAdminArticleAction(
       title,
       summary: summary || null,
       content,
-      category,
+      categoryId: categoryRecord!.id,
       tags,
       authorName: 'Admin',
       slug,
@@ -261,4 +258,123 @@ export async function submitAdminArticleAction(
     ok: true,
     message: 'Article published successfully.',
   };
+}
+
+export type CategoryFormState = {
+  ok: boolean;
+  message: string;
+  errors?: Record<string, string>;
+};
+
+export async function createCategoryAction(
+  _prevState: CategoryFormState,
+  formData: FormData,
+): Promise<CategoryFormState> {
+  await ensureAdmin();
+
+  const label = (formData.get('label') ?? '').toString().trim();
+  const slugInput = (formData.get('slug') ?? '').toString().trim();
+  const description = (formData.get('description') ?? '').toString().trim();
+  const railTitle = (formData.get('railTitle') ?? '').toString().trim();
+
+  const errors: Record<string, string> = {};
+
+  if (!label) {
+    errors.label = 'Give the category a name readers will recognize.';
+  }
+
+  const slug = slugify(slugInput || label);
+  if (!slug) {
+    errors.slug = 'Provide a slug so we can link to this category.';
+  } else {
+    const exists = await prisma.category.findUnique({ where: { slug } });
+    if (exists) {
+      errors.slug = 'That slug is already in use.';
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return {
+      ok: false,
+      message: 'Fix the highlighted fields and try again.',
+      errors,
+    };
+  }
+
+  await prisma.category.create({
+    data: {
+      label,
+      slug,
+      description: description || null,
+      railTitle: railTitle || null,
+    },
+  });
+
+  revalidatePath('/admin/categories');
+  revalidatePath('/admin');
+  revalidatePath('/', 'layout');
+  revalidatePath(`/categories/${slug}`);
+  if (slug === 'case-studies') {
+    revalidatePath('/case-studies');
+  }
+
+  return {
+    ok: true,
+    message: 'Category created successfully.',
+  };
+}
+
+export async function deleteCategoryAction(
+  categoryId: string,
+  formData: FormData,
+): Promise<CategoryFormState> {
+  await ensureAdmin();
+
+  const fallbackId = (formData.get('fallbackCategoryId') ?? '').toString().trim();
+
+  if (!categoryId) {
+    return { ok: false, message: 'Category id required.' };
+  }
+
+  if (!fallbackId) {
+    return { ok: false, message: 'Pick a category to move existing articles into.' };
+  }
+
+  if (fallbackId === categoryId) {
+    return { ok: false, message: 'Fallback category must be different.' };
+  }
+
+  const [target, fallback] = await Promise.all([
+    prisma.category.findUnique({ where: { id: categoryId }, select: { id: true, slug: true } }),
+    prisma.category.findUnique({ where: { id: fallbackId }, select: { id: true, slug: true } }),
+  ]);
+
+  if (!target) {
+    return { ok: false, message: 'Category already removed.' };
+  }
+
+  if (!fallback) {
+    return { ok: false, message: 'Fallback category not found.' };
+  }
+
+  await prisma.$transaction([
+    prisma.article.updateMany({
+      where: { categoryId: target.id },
+      data: { categoryId: fallback.id },
+    }),
+    prisma.category.delete({ where: { id: target.id } }),
+  ]);
+
+  revalidatePath('/admin/categories');
+  revalidatePath('/admin');
+  revalidatePath('/', 'layout');
+  revalidatePath(`/categories/${fallback.slug}`);
+  if (target.slug) {
+    revalidatePath(`/categories/${target.slug}`);
+    if (target.slug === 'case-studies') {
+      revalidatePath('/case-studies');
+    }
+  }
+
+  return { ok: true, message: 'Category removed. Existing articles were reassigned.' };
 }

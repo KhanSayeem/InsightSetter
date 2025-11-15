@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { isAdminAuthenticated } from '@/lib/admin-auth';
+import { getAllCategories } from '@/lib/article-categories';
 import LoginForm from '@/app/(admin)/admin/login-form';
 import SubmitForm from './submit-form';
 
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 
 export default async function AdminSubmitPage() {
   const authed = await isAdminAuthenticated();
+  const categories = authed ? await getAllCategories() : [];
 
   if (!authed) {
     return (
@@ -36,7 +38,7 @@ export default async function AdminSubmitPage() {
           As an admin, you can directly publish articles to the site.
         </p>
       </header>
-      <SubmitForm />
+      <SubmitForm categories={categories} />
     </div>
   );
 }

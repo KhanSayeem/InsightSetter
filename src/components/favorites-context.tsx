@@ -31,16 +31,16 @@ function writeIds(ids: Set<string>) {
 }
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const [ids, setIds] = useState<Set<string>>(new Set());
+  const [ids, setIds] = useState<Set<string>>(() => readIds());
 
   useEffect(() => {
-    setIds(readIds());
-    const onChange = () => setIds(readIds());
-    window.addEventListener('storage', onChange);
-    window.addEventListener('favorites:changed', onChange as any);
+    const onStorage = () => setIds(readIds());
+    const onCustom: EventListener = () => setIds(readIds());
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('favorites:changed', onCustom);
     return () => {
-      window.removeEventListener('storage', onChange);
-      window.removeEventListener('favorites:changed', onChange as any);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('favorites:changed', onCustom);
     };
   }, []);
 

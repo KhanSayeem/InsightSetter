@@ -1,6 +1,5 @@
-import { Suspense } from 'react';
-import Link from 'next/link';
 import type { Metadata } from 'next';
+import type { Prisma } from '@prisma/client';
 import { ArticleStatus } from '@prisma/client';
 
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { LinkButton } from '@/components/ui/link-button';
 import { CopyLinkButton } from '@/components/copy-link-button';
 import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
-import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
+import { getAllCategories } from '@/lib/article-categories';
 import { MoveToMenu } from '@/components/admin/move-to-menu';
 import { deleteArticleAction } from '../actions';
 
@@ -22,20 +21,6 @@ export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 const dateFormatter = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
-
-function ArrowIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
-      <path
-        d="M4.5 10h9m0 0-3.5-3.5M13.5 10l-3.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 type SearchParams = {
   q?: string;
@@ -67,7 +52,7 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
   const perPage = 50;
 
   // Build where clause
-  const where: any = {
+  const where: Prisma.ArticleWhereInput = {
     status: ArticleStatus.PUBLISHED,
   };
 
@@ -80,10 +65,11 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
   }
 
   if (categoryFilter && categoryFilter !== 'all') {
-    where.category = categoryFilter;
+    where.categoryId = categoryFilter;
   }
 
-  const [articles, totalCount] = await Promise.all([
+  const [categories, articles, totalCount] = await Promise.all([
+    getAllCategories(),
     prisma.article.findMany({
       where,
       orderBy: [
@@ -98,7 +84,12 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
         slug: true,
         authorName: true,
         publishedAt: true,
-        category: true,
+        category: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
         tags: true,
       },
     }),
@@ -115,6 +106,7 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
   const viewCountMap = new Map<string, number>(viewGroups.map(g => [g.articleId, g._count._all]));
 
   const totalPages = Math.ceil(totalCount / perPage);
+  const categoryOptions = categories.map((category) => ({ id: category.id, label: category.label }));
 
   return (
     <div className="space-y-6">
@@ -149,9 +141,9 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
               className="rounded-lg border border-border bg-background px-4 py-2 text-sm text-foreground shadow-sm transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="all">All Categories</option>
-              {Object.entries(ARTICLE_CATEGORY_META).map(([value, meta]) => (
-                <option key={value} value={value}>
-                  {meta.label}
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.label}
                 </option>
               ))}
             </select>
@@ -198,9 +190,11 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
                     <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{article.slug}</code>
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
-                    <Tag variant="outline" className="border-border/70 bg-background/70 px-3 py-1 text-xs">
-                      {ARTICLE_CATEGORY_META[article.category].label}
-                    </Tag>
+                    {article.category ? (
+                      <Tag variant="outline" className="border-border/70 bg-background/70 px-3 py-1 text-xs">
+                        {article.category.label}
+                      </Tag>
+                    ) : null}
                     <span className="text-xs text-muted-foreground">
                       Views: {viewCountMap.get(article.id) ?? 0}
                     </span>
@@ -221,7 +215,11 @@ export default async function AdminArticlesPage({ searchParams }: ArticlesPagePr
                     Read
                   </LinkButton>
                   <CopyLinkButton href={`/articles/${article.slug}`} />
-                  <MoveToMenu articleId={article.id} currentCategory={article.category} />
+                  <MoveToMenu
+                    articleId={article.id}
+                    currentCategoryId={article.category?.id ?? ''}
+                    options={categoryOptions}
+                  />
                   <form
                     action={deleteArticleAction.bind(null, article.id, article.slug)}
                     className="w-full sm:w-auto"

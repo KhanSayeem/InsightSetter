@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 
 export function CopyLinkButton({ href, className }: { href: string; className?: string }) {
   const [copied, setCopied] = useState(false);

@@ -1,12 +1,10 @@
 'use server';
 
 import { ArticleStatus } from '@prisma/client';
-import type { ArticleCategory } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
 import { prisma } from '@/lib/prisma';
 import { slugify } from '@/lib/slugify';
-import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 
 export type FormActionState = {
   ok: boolean;
@@ -77,16 +75,17 @@ export async function submitArticleAction(
     errors.authorName = 'Let us know who to credit.';
   }
 
-  const categoryValues = new Set(Object.keys(ARTICLE_CATEGORY_META));
-  if (!categoryInput || !categoryValues.has(categoryInput)) {
+  const categoryRecord = categoryInput
+    ? await prisma.category.findUnique({ where: { id: categoryInput }, select: { id: true } })
+    : null;
+
+  if (!categoryRecord) {
     errors.category = 'Pick the category that best fits the insight.';
   }
 
   if (tags.length > 5) {
     errors.tags = 'Keep it to five tags so the story stays focused.';
   }
-
-  const category = categoryInput as ArticleCategory;
 
   if (authorEmail && !validateEmail(authorEmail)) {
     errors.authorEmail = 'That email looks off. Double-check it?';
@@ -107,7 +106,7 @@ export async function submitArticleAction(
       title,
       summary: summary || null,
       content,
-      category,
+      categoryId: categoryRecord!.id,
       tags,
       authorName,
       authorEmail: authorEmail || null,

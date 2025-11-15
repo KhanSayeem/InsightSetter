@@ -10,7 +10,7 @@ import { LinkButton } from '@/components/ui/link-button';
 import { Tag } from '@/components/ui/tag';
 import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
-import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
+import { getAllCategories } from '@/lib/article-categories';
 import { DigestSenderForm } from '@/components/admin/digest-sender-form';
 import { MoveToMenu } from '@/components/admin/move-to-menu';
 import { deleteArticleAction, publishArticleAction, rejectArticleAction } from './actions';
@@ -127,149 +127,161 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     );
   }
 
+  const categories = await getAllCategories();
+  const categoryMap = new Map(categories.map((category) => [category.id, category]));
+  const categoryOptions = categories.map((category) => ({ id: category.id, label: category.label }));
+
   // First batch: Critical data for immediate display
-  const [pending, recentPublished, publishedCount, rejectedCount] = await Promise.all([
-    prisma.article.findMany({
-      where: { status: ArticleStatus.PENDING },
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        title: true,
-        summary: true,
-        content: true,
-        authorName: true,
-        authorEmail: true,
-        createdAt: true,
-        category: true,
-        tags: true,
+  const pending = await prisma.article.findMany({
+    where: { status: ArticleStatus.PENDING },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      content: true,
+      authorName: true,
+      authorEmail: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          label: true,
+          description: true,
+        },
       },
-    }),
-    prisma.article.findMany({
-      where: { status: ArticleStatus.PUBLISHED },
-      orderBy: [
-        { publishedAt: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      take: 30,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        authorName: true,
-        publishedAt: true,
-        category: true,
-        tags: true,
+      tags: true,
+    },
+  });
+  const recentPublished = await prisma.article.findMany({
+    where: { status: ArticleStatus.PUBLISHED },
+    orderBy: [
+      { publishedAt: 'desc' },
+      { createdAt: 'desc' },
+    ],
+    take: 30,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      authorName: true,
+      publishedAt: true,
+      category: {
+        select: {
+          id: true,
+          label: true,
+        },
       },
-    }),
-    prisma.article.count({ where: { status: ArticleStatus.PUBLISHED } }),
-    prisma.article.count({ where: { status: ArticleStatus.REJECTED } }),
-  ]);
+      tags: true,
+    },
+  });
+  const publishedCount = await prisma.article.count({ where: { status: ArticleStatus.PUBLISHED } });
+  const rejectedCount = await prisma.article.count({ where: { status: ArticleStatus.REJECTED } });
 
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   // Second batch: Article analytics
-  const [
-    submissionsLast7Days,
-    publishedLast7Days,
-    queuedByCategory,
-    publishedByCategory,
-    topCountries,
-    topViewedGroups,
-  ] = await Promise.all([
-    prisma.article.count({
-      where: { createdAt: { gte: sevenDaysAgo } },
-    }),
-    prisma.article.count({
-      where: {
-        status: ArticleStatus.PUBLISHED,
-        publishedAt: { gte: sevenDaysAgo },
-      },
-    }),
-    prisma.article.groupBy({
-      by: ['category'],
-      _count: { _all: true },
-      where: { status: ArticleStatus.PENDING },
-    }),
-    prisma.article.groupBy({
-      by: ['category'],
-      _count: { _all: true },
-      where: {
-        status: ArticleStatus.PUBLISHED,
-        publishedAt: { gte: thirtyDaysAgo },
-      },
-    }),
-    prisma.pageView.groupBy({
-      by: ['countryCode'],
-      where: {
-        occurredAt: { gte: thirtyDaysAgo },
-        isBot: false,
-      },
-      _count: { _all: true },
-      // Order by size of group
-      orderBy: { _count: { articleId: 'desc' } },
-      take: 6,
-    }),
-    prisma.pageView.groupBy({
-      by: ['articleId'],
-      where: {
-        occurredAt: { gte: thirtyDaysAgo },
-        isBot: false,
-      },
-      _count: { _all: true },
-      orderBy: { _count: { articleId: 'desc' } },
-      take: 6,
-    }),
-  ]);
+  const submissionsLast7Days = await prisma.article.count({
+    where: { createdAt: { gte: sevenDaysAgo } },
+  });
+  const publishedLast7Days = await prisma.article.count({
+    where: {
+      status: ArticleStatus.PUBLISHED,
+      publishedAt: { gte: sevenDaysAgo },
+    },
+  });
+  const queuedByCategory = await prisma.article.groupBy({
+    by: ['categoryId'],
+    _count: { _all: true },
+    where: { status: ArticleStatus.PENDING },
+  });
+  const publishedByCategory = await prisma.article.groupBy({
+    by: ['categoryId'],
+    _count: { _all: true },
+    where: {
+      status: ArticleStatus.PUBLISHED,
+      publishedAt: { gte: thirtyDaysAgo },
+    },
+  });
+  const topCountries = await prisma.pageView.groupBy({
+    by: ['countryCode'],
+    where: {
+      occurredAt: { gte: thirtyDaysAgo },
+      isBot: false,
+    },
+    _count: { _all: true },
+    orderBy: { _count: { articleId: 'desc' } },
+    take: 6,
+  });
+  const topViewedGroups = await prisma.pageView.groupBy({
+    by: ['articleId'],
+    where: {
+      occurredAt: { gte: thirtyDaysAgo },
+      isBot: false,
+    },
+    _count: { _all: true },
+    orderBy: { _count: { articleId: 'desc' } },
+    take: 6,
+  });
 
   // Resolve article metadata for most-viewed list while preserving order
   const topIds = topViewedGroups.map((g) => g.articleId);
   const topArticles = topIds.length
     ? await prisma.article.findMany({
         where: { id: { in: topIds } },
-        select: { id: true, title: true, slug: true, category: true },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          category: {
+            select: {
+              id: true,
+              label: true,
+            },
+          },
+        },
       })
     : [];
   const topArticleById = new Map(topArticles.map((a) => [a.id, a] as const));
+  type MostViewedArticle = NonNullable<(typeof topArticles)[number]>;
+  type MostViewedEntry = { article: MostViewedArticle; views: number };
   const mostViewed = topViewedGroups
-    .map((g) => ({ article: topArticleById.get(g.articleId), views: g._count._all }))
-    .filter((x): x is { article: { id: string; title: string; slug: string; category: any }; views: number } =>
-      Boolean(x.article),
-    );
+    .map<MostViewedEntry | null>((g) => {
+      const article = topArticleById.get(g.articleId);
+      return article ? { article, views: g._count._all } : null;
+    })
+    .filter((entry): entry is MostViewedEntry => entry !== null);
 
   // Third batch: Review data and tags
-  const [reviewDurations, tagSamples] = await Promise.all([
-    prisma.article.findMany({
-      select: { submittedAt: true, reviewedAt: true },
-    }),
-    prisma.article.findMany({
-      where: {
-        status: ArticleStatus.PUBLISHED,
-        publishedAt: { gte: thirtyDaysAgo },
-        tags: { isEmpty: false },
-      },
-      select: { tags: true },
-    }),
-  ]);
+  const reviewDurations = await prisma.article.findMany({
+    select: { submittedAt: true, reviewedAt: true },
+  });
+  const tagSamples = await prisma.article.findMany({
+    where: {
+      status: ArticleStatus.PUBLISHED,
+      publishedAt: { gte: thirtyDaysAgo },
+      tags: { isEmpty: false },
+    },
+    select: { tags: true },
+  });
 
   // Fourth batch: Subscriber data
-  const [totalSubscribers, newSubscribersLast7Days, activeSubscribers] = await Promise.all([
-    prisma.subscriber.count({
-      where: { status: SubscriberStatus.ACTIVE },
-    }),
-    prisma.subscriber.count({
-      where: {
-        status: SubscriberStatus.ACTIVE,
-        createdAt: { gte: sevenDaysAgo },
-      },
-    }),
-    prisma.subscriber.findMany({
-      where: { status: SubscriberStatus.ACTIVE },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, email: true, createdAt: true },
-    }),
-  ]);
+  const totalSubscribers = await prisma.subscriber.count({
+    where: { status: SubscriberStatus.ACTIVE },
+  });
+  const newSubscribersLast7Days = await prisma.subscriber.count({
+    where: {
+      status: SubscriberStatus.ACTIVE,
+      createdAt: { gte: sevenDaysAgo },
+    },
+  });
+  const activeSubscribers = await prisma.subscriber.findMany({
+    where: { status: SubscriberStatus.ACTIVE },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, email: true, createdAt: true },
+  });
 
   const completedReviews = reviewDurations.filter(
     (item): item is { submittedAt: Date; reviewedAt: Date } =>
@@ -387,12 +399,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   Publish a few pieces to see the monthly mix.
                 </p>
               ) : (
-                publishedByCategory.map(({ category, _count }) => (
-                  <div key={category} className="flex items-center justify-between text-sm">
-                    <span>{ARTICLE_CATEGORY_META[category].label}</span>
-                    <span className="font-semibold text-foreground">{_count?._all ?? 0}</span>
-                  </div>
-                ))
+                publishedByCategory.map(({ categoryId, _count }) => {
+                  const meta = categoryId ? categoryMap.get(categoryId) : undefined;
+                  return (
+                    <div key={categoryId ?? 'uncategorized'} className="flex items-center justify-between text-sm">
+                      <span>{meta?.label ?? 'Uncategorized'}</span>
+                      <span className="font-semibold text-foreground">{_count?._all ?? 0}</span>
+                    </div>
+                  );
+                })
               )}
             </div>
           </Card>
@@ -408,7 +423,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <div key={article.id} className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">{article.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {ARTICLE_CATEGORY_META[article.category].label} •{' '}
+                      {article.category?.label ?? 'Uncategorized'} •{' '}
                       {dateFormatter.format(article.publishedAt ?? new Date())}
                     </p>
                   </div>
@@ -432,19 +447,22 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   Nothing in review right now. Fresh pitches will appear here automatically.
                 </p>
               ) : (
-                queuedByCategory.map(({ category, _count }) => (
-                  <div key={category} className="flex items-center justify-between rounded-xl border border-border/70 bg-background/70 px-4 py-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        {ARTICLE_CATEGORY_META[category].label}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {ARTICLE_CATEGORY_META[category].description}
-                      </p>
+                queuedByCategory.map(({ categoryId, _count }) => {
+                  const meta = categoryId ? categoryMap.get(categoryId) : undefined;
+                  return (
+                    <div key={categoryId ?? 'uncategorized'} className="flex items-center justify-between rounded-xl border border-border/70 bg-background/70 px-4 py-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">
+                          {meta?.label ?? 'Uncategorized'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {meta?.description ?? 'New submissions will define this category.'}
+                        </p>
+                      </div>
+                      <span className="text-lg font-semibold text-foreground">{_count?._all ?? 0}</span>
                     </div>
-                    <span className="text-lg font-semibold text-foreground">{_count?._all ?? 0}</span>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </Card>
@@ -570,7 +588,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </p>
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Tag variant="outline" className="border-border/70 bg-background/70 px-3 py-1">
-                    {ARTICLE_CATEGORY_META[submission.category].label}
+                    {submission.category?.label ?? 'Uncategorized'}
                   </Tag>
                   {submission.tags.map((tag) => (
                     <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
@@ -658,7 +676,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Tag variant="outline" className="border-border/70 bg-background/70 px-3 py-1 text-xs">
-                      {ARTICLE_CATEGORY_META[article.category].label}
+                      {article.category?.label ?? 'Uncategorized'}
                     </Tag>
                     {article.tags.map((tag) => (
                       <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
@@ -676,7 +694,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   >
                     Read
                   </LinkButton>
-                  <MoveToMenu articleId={article.id} currentCategory={article.category} />
+                  <MoveToMenu
+                    articleId={article.id}
+                    currentCategoryId={article.category?.id ?? ''}
+                    options={categoryOptions}
+                  />
                   <form
                     action={deleteArticleAction.bind(null, article.id, article.slug)}
                     className="w-full sm:w-auto"

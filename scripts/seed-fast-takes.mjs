@@ -1,4 +1,4 @@
-import { PrismaClient, ArticleCategory, ArticleStatus } from "@prisma/client";
+import { PrismaClient, ArticleStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -12,7 +12,6 @@ const fastTakes = [
     authorName: "InsightSetter Desk",
     slug: "fast-take-liquidity-jolts",
     status: ArticleStatus.PUBLISHED,
-    category: ArticleCategory.FAST_TAKE,
     tags: ["macro", "liquidity"],
     publishedAt: now,
   },
@@ -23,7 +22,6 @@ const fastTakes = [
     authorName: "InsightSetter Desk",
     slug: "fast-take-ai-infra-spend",
     status: ArticleStatus.PUBLISHED,
-    category: ArticleCategory.FAST_TAKE,
     tags: ["ai", "infrastructure"],
     publishedAt: now,
   },
@@ -34,18 +32,23 @@ const fastTakes = [
     authorName: "InsightSetter Desk",
     slug: "fast-take-b2b-pricing-power",
     status: ArticleStatus.PUBLISHED,
-    category: ArticleCategory.FAST_TAKE,
     tags: ["saas", "pricing"],
     publishedAt: now,
   },
 ];
 
 async function run() {
+  const category = await prisma.category.findUnique({ where: { slug: "fast-takes" } });
+  if (!category) {
+    throw new Error("Category 'fast-takes' not found. Create it via /admin/categories first.");
+  }
+
   for (const data of fastTakes) {
+    const payload = { ...data, categoryId: category.id };
     await prisma.article.upsert({
       where: { slug: data.slug },
-      update: data,
-      create: data,
+      update: payload,
+      create: payload,
     });
   }
 

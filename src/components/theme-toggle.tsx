@@ -49,7 +49,7 @@ export function ThemeToggle() {
     }
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (event: MediaQueryListEvent) => {
+    const handleChange = () => {
       if (getStoredTheme() !== null) {
         return;
       }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/tag';
+import { getAllCategories } from '@/lib/article-categories';
 import SubmitForm from './submit-form';
 
 export const metadata: Metadata = {
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
     'Share your perspective on finance, technology, or the economy with the InsightSetter audience.',
 };
 
-export default function SubmitPage() {
+export default async function SubmitPage() {
+  const categories = await getAllCategories();
+
   return (
     <div className="space-y-10">
       <header className="space-y-4">
@@ -27,7 +30,7 @@ export default function SubmitPage() {
       </header>
 
       <Card className="p-8 shadow-lg">
-        <SubmitForm />
+        <SubmitForm categories={categories} />
       </Card>
     </div>
   );

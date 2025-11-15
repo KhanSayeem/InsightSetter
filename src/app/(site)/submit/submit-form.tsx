@@ -5,8 +5,13 @@ import { useFormStatus } from 'react-dom';
 
 import { submitArticleAction } from '@/app/actions';
 import type { FormActionState } from '@/app/actions';
-import { ARTICLE_CATEGORY_OPTIONS, ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { Button } from '@/components/ui/button';
+
+type CategoryOption = {
+  id: string;
+  label: string;
+  description?: string | null;
+};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -24,7 +29,7 @@ const initialState: FormActionState = {
   errors: {},
 };
 
-export default function SubmitForm() {
+export default function SubmitForm({ categories }: { categories: CategoryOption[] }) {
   const [state, formAction] = useActionState(submitArticleAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -50,17 +55,19 @@ export default function SubmitForm() {
           <option value="" disabled>
             Choose the best fit
           </option>
-          {ARTICLE_CATEGORY_OPTIONS.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.label}
             </option>
           ))}
         </select>
-        <p className="text-xs text-muted-foreground">
-          {Object.values(ARTICLE_CATEGORY_META)
-            .map((meta) => meta.label)
-            .join(' â€¢ ')}
-        </p>
+        {categories.length > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {categories.map((category) => category.label).join(' · ')}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">No categories available yet.</p>
+        )}
         {state.errors?.category && <p className="text-sm text-destructive">{state.errors.category}</p>}
       </div>
 

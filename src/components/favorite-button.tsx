@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from 'react';
 import { useFavorites } from './favorites-context';
 
 function Heart({ filled, className }: { filled: boolean; className?: string }) {
@@ -17,9 +16,7 @@ function Heart({ filled, className }: { filled: boolean; className?: string }) {
 
 export function FavoriteButton({ id, className, stopNavigation }: { id: string; className?: string; stopNavigation?: boolean }) {
   const { has, toggle } = useFavorites();
-  const [active, setActive] = useState(false);
-
-  useEffect(() => setActive(has(id)), [has, id]);
+  const active = has(id);
 
   function onClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (stopNavigation) {
@@ -27,7 +24,6 @@ export function FavoriteButton({ id, className, stopNavigation }: { id: string; 
       e.stopPropagation();
     }
     toggle(id);
-    setActive((v) => !v);
   }
 
   return (

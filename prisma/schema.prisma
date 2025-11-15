@@ -24,7 +24,8 @@ model Article {
   publishedAt DateTime?
   slug        String          @unique
   reviewNotes String?
-  category    ArticleCategory @default(MARKETS_MACRO)
+  categoryId  String
+  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   tags        String[]        @default([])
 
   // Relations
@@ -62,16 +63,20 @@ enum ArticleStatus {
   REJECTED
 }
 
-enum ArticleCategory {
-  MARKETS_MACRO
-  OPERATORS
-  CAPITAL_STRATEGY
-  FAST_TAKE
-  DEEP_DIVE
-  CASE_STUDY
-}
-
 enum SubscriberStatus {
   ACTIVE
   UNSUBSCRIBED
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  label       String
+  slug        String    @unique
+  description String?
+  railTitle   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  articles    Article[]
 }

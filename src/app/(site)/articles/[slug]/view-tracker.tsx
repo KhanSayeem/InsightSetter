@@ -9,7 +9,7 @@ function isSupported() {
 export function ViewTracker({ articleId }: { articleId: string }) {
   useEffect(() => {
     // Development diagnostics
-    const log = (...args: any[]) => {
+    const log = (...args: unknown[]) => {
       if (process.env.NODE_ENV !== 'production') console.info('[view-tracker]', ...args);
     };
 

@@ -16,7 +16,13 @@ export async function POST(request: Request) {
         authorName: true,
         publishedAt: true,
         createdAt: true,
-        category: true,
+        category: {
+          select: {
+            id: true,
+            label: true,
+            slug: true,
+          },
+        },
         tags: true,
         summary: true,
         content: true,
@@ -26,7 +32,7 @@ export async function POST(request: Request) {
     const index = new Map<string, number>(ids.map((id: string, i: number) => [id, i] as const));
     rows.sort((a, b) => (index.get(a.id) ?? 0) - (index.get(b.id) ?? 0));
     return NextResponse.json({ items: rows });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ items: [] });
   }
 }

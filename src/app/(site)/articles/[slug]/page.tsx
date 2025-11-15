@@ -6,7 +6,6 @@ import { notFound } from 'next/navigation';
 import { ArticleStatus } from '@prisma/client';
 
 import { Tag } from '@/components/ui/tag';
-import { ARTICLE_CATEGORY_META } from '@/lib/article-categories';
 import { prisma } from '@/lib/prisma';
 import { ViewTracker } from './view-tracker';
 import { ShareButton } from '@/components/share-button';
@@ -39,7 +38,13 @@ async function getArticle(slug: string) {
       authorName: true,
       publishedAt: true,
       createdAt: true,
-      category: true,
+      category: {
+        select: {
+          id: true,
+          slug: true,
+          label: true,
+        },
+      },
       tags: true,
     },
   });
@@ -109,9 +114,13 @@ export default async function ArticlePage(props: PageParams) {
           <span>{article.authorName}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.25em]">
-            {ARTICLE_CATEGORY_META[article.category].label}
-          </Tag>
+          {article.category ? (
+            <Link href={`/categories/${article.category.slug}`}>
+              <Tag variant="outline" className="border-border/70 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.25em]">
+                {article.category.label}
+              </Tag>
+            </Link>
+          ) : null}
           {article.tags.map((tag) => (
             <Tag key={tag} variant="muted" className="px-3 py-1 text-xs lowercase">
               #{tag}

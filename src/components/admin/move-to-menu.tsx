@@ -4,15 +4,16 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { moveArticleToCategoryAction } from '@/app/(admin)/admin/actions';
-import { ARTICLE_CATEGORY_OPTIONS } from '@/lib/article-categories';
-import type { ArticleCategory } from '@prisma/client';
+
+type CategoryOption = { id: string; label: string };
 
 type MoveToMenuProps = {
   articleId: string;
-  currentCategory: ArticleCategory;
+  currentCategoryId: string;
+  options: CategoryOption[];
 };
 
-export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
+export function MoveToMenu({ articleId, currentCategoryId, options }: MoveToMenuProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
@@ -68,18 +69,18 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
     };
   }, [open]);
 
-  const options = ARTICLE_CATEGORY_OPTIONS.filter((d) => d.value !== currentCategory);
-  if (options.length === 0) return null;
+  const menuOptions = options.filter((option) => option.id !== currentCategoryId);
+  if (menuOptions.length === 0) return null;
 
   function toggleMenu() {
     setOpen((v) => !v);
   }
 
-  function handleMove(category: ArticleCategory) {
+  function handleMove(categoryId: string) {
     setOpen(false);
     startTransition(() => {
       // Fire and refresh; no await inside transition to keep UI responsive
-      moveArticleToCategoryAction(articleId, category).finally(() => {
+      moveArticleToCategoryAction(articleId, categoryId).finally(() => {
         router.refresh();
       });
     });
@@ -108,12 +109,12 @@ export function MoveToMenu({ articleId, currentCategory }: MoveToMenuProps) {
           }
         >
           <div className="overflow-y-auto" style={{ maxHeight }}>
-            {options.map((opt) => (
+            {menuOptions.map((opt) => (
               <button
-                key={opt.value}
+                key={opt.id}
                 type="button"
                 className="w-full rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-primary/10 disabled:opacity-50"
-                onClick={() => handleMove(opt.value)}
+                onClick={() => handleMove(opt.id)}
                 disabled={isPending}
               >
                 {opt.label}
