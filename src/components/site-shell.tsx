@@ -9,6 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { ButtonLink } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { FavoritesProvider } from '@/components/favorites-context';
+import { PRIMARY_NAV_CATEGORY_LIMIT } from '@/lib/nav-config';
 
 const navigation = [
   { href: '/#briefing', label: 'Briefing' },
@@ -45,13 +46,35 @@ type NavCategory = {
   id: string;
   slug: string;
   label: string;
+  navPinned: boolean;
+  navPinnedAt: string | null;
 };
 
 export function SiteShell({ children, categories }: { children: ReactNode; categories: NavCategory[] }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement | null>(null);
-  const hasCategories = categories.length > 0;
+  const pinnedCategories = categories
+    .filter((category) => category.navPinned)
+    .sort((a, b) => {
+      if (a.navPinnedAt && b.navPinnedAt) {
+        return new Date(a.navPinnedAt).getTime() - new Date(b.navPinnedAt).getTime();
+      }
+      if (a.navPinnedAt) {
+        return -1;
+      }
+      if (b.navPinnedAt) {
+        return 1;
+      }
+      return a.label.localeCompare(b.label);
+    })
+    .slice(0, PRIMARY_NAV_CATEGORY_LIMIT);
+  const pinnedIds = new Set(pinnedCategories.map((category) => category.id));
+  const moreCategories = categories
+    .filter((category) => !pinnedIds.has(category.id))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const hasMoreCategories = moreCategories.length > 0;
+  const hasAnyCategories = categories.length > 0;
 
   useEffect(() => {
     if (!isMoreOpen) {
@@ -102,7 +125,16 @@ export function SiteShell({ children, categories }: { children: ReactNode; categ
                   {label}
                 </Link>
               ))}
-              {hasCategories ? (
+              {pinnedCategories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/categories/${category.slug}`}
+                  className="rounded-full px-3 py-2 transition-colors hover:bg-primary/10 hover:text-foreground"
+                >
+                  {category.label}
+                </Link>
+              ))}
+              {hasMoreCategories ? (
                 <div ref={moreRef} className="relative">
                   <button
                     type="button"
@@ -116,7 +148,7 @@ export function SiteShell({ children, categories }: { children: ReactNode; categ
                   {isMoreOpen ? (
                     <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-border/70 bg-background p-2 shadow-xl">
                       <div className="max-h-72 space-y-1 overflow-y-auto text-sm">
-                        {categories.map((category) => (
+                        {moreCategories.map((category) => (
                           <Link
                             key={category.id}
                             href={`/categories/${category.slug}`}
@@ -158,7 +190,7 @@ export function SiteShell({ children, categories }: { children: ReactNode; categ
                   {label}
                 </Link>
               ))}
-              {hasCategories ? (
+              {hasAnyCategories ? (
                 <div className="w-full space-y-2 border-t border-border/60 pt-4">
                   <p className="text-sm font-semibold text-muted-foreground">Explore</p>
                   {categories.map((category) => (

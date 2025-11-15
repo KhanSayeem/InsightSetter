@@ -2,12 +2,11 @@ import type { Metadata } from 'next';
 
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/tag';
-import { Button } from '@/components/ui/button';
 import { prisma } from '@/lib/prisma';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
 import LoginForm from '../login-form';
 import { CategoryCreateForm } from './category-create-form';
-import { deleteCategoryAction } from '../actions';
+import { CategoryDeleteForm } from './category-delete-form';
 
 export const metadata: Metadata = {
   title: 'Manage Categories',
@@ -43,6 +42,7 @@ export default async function AdminCategoriesPage() {
       description: true,
       railTitle: true,
       createdAt: true,
+      navPinned: true,
       _count: {
         select: {
           articles: true,
@@ -50,6 +50,7 @@ export default async function AdminCategoriesPage() {
       },
     },
   });
+  const pinnedCategories = categories.filter((category) => category.navPinned);
 
   return (
     <div className="space-y-8">
@@ -108,32 +109,7 @@ export default async function AdminCategoriesPage() {
                         Add another category before deleting this one.
                       </p>
                     ) : (
-                      <form
-                        action={deleteCategoryAction.bind(null, category.id)}
-                        className="flex flex-col gap-2 text-sm"
-                      >
-                        <label htmlFor={`fallback-${category.id}`} className="text-xs font-semibold text-muted-foreground">
-                          Move existing articles to
-                        </label>
-                        <select
-                          id={`fallback-${category.id}`}
-                          name="fallbackCategoryId"
-                          required
-                          className="rounded-xl border border-border bg-background px-3 py-2 text-sm shadow-sm focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        >
-                          <option value="" disabled>
-                            Choose category
-                          </option>
-                          {fallbackOptions.map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                        <Button type="submit" variant="destructive" size="sm" className="self-start">
-                          Delete category
-                        </Button>
-                      </form>
+                      <CategoryDeleteForm categoryId={category.id} fallbackOptions={fallbackOptions} />
                     )}
                   </div>
                 </li>
@@ -145,7 +121,7 @@ export default async function AdminCategoriesPage() {
 
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Create a new category</h2>
-          <CategoryCreateForm />
+          <CategoryCreateForm pinnedCategories={pinnedCategories.map(({ id, label }) => ({ id, label }))} />
         </div>
       </div>
     </div>

@@ -63,7 +63,7 @@ export default function SubmitForm({ categories }: { categories: CategoryOption[
         </select>
         {categories.length > 0 ? (
           <p className="text-xs text-muted-foreground">
-            {categories.map((category) => category.label).join(' · ')}
+            {categories.map((category) => category.label).join(' \u00B7 ')}
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">No categories available yet.</p>

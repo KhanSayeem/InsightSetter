@@ -9,6 +9,8 @@ export const CATEGORY_SUMMARY_SELECT = {
   label: true,
   description: true,
   railTitle: true,
+  navPinned: true,
+  navPinnedAt: true,
 } as const satisfies Prisma.CategorySelect;
 
 export type CategorySummary = Prisma.CategoryGetPayload<{ select: typeof CATEGORY_SUMMARY_SELECT }>;

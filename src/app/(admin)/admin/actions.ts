@@ -8,6 +8,7 @@ import {
   verifyAdminPassword,
 } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
+import { PRIMARY_NAV_CATEGORY_LIMIT } from '@/lib/nav-config';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { slugify } from '@/lib/slugify';
@@ -276,6 +277,8 @@ export async function createCategoryAction(
   const slugInput = (formData.get('slug') ?? '').toString().trim();
   const description = (formData.get('description') ?? '').toString().trim();
   const railTitle = (formData.get('railTitle') ?? '').toString().trim();
+  const navPlacement = (formData.get('navPlacement') ?? 'more').toString();
+  const navReplacementId = (formData.get('navReplacement') ?? '').toString();
 
   const errors: Record<string, string> = {};
 
@@ -293,6 +296,28 @@ export async function createCategoryAction(
     }
   }
 
+  const wantsNav = navPlacement === 'nav' || navPlacement === 'replace';
+  const wantsReplace = navPlacement === 'replace';
+  let pinnedNavCategoryIds: string[] = [];
+
+  if (wantsNav) {
+    pinnedNavCategoryIds = (
+      await prisma.category.findMany({ where: { navPinned: true }, select: { id: true } })
+    ).map((category) => category.id);
+
+    if (!wantsReplace && pinnedNavCategoryIds.length >= PRIMARY_NAV_CATEGORY_LIMIT) {
+      errors.navPlacement = 'Primary navigation already has the maximum number of categories.';
+    }
+
+    if (wantsReplace) {
+      if (!navReplacementId) {
+        errors.navReplacement = 'Choose a category to move into “More.”';
+      } else if (!pinnedNavCategoryIds.includes(navReplacementId)) {
+        errors.navReplacement = 'Select one of the categories currently in the nav.';
+      }
+    }
+  }
+
   if (Object.keys(errors).length > 0) {
     return {
       ok: false,
@@ -301,13 +326,28 @@ export async function createCategoryAction(
     };
   }
 
-  await prisma.category.create({
-    data: {
-      label,
-      slug,
-      description: description || null,
-      railTitle: railTitle || null,
-    },
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    const created = await tx.category.create({
+      data: {
+        label,
+        slug,
+        description: description || null,
+        railTitle: railTitle || null,
+        navPinned: wantsNav,
+        navPinnedAt: wantsNav ? now : null,
+      },
+    });
+
+    if (wantsReplace && navReplacementId) {
+      await tx.category.update({
+        where: { id: navReplacementId },
+        data: { navPinned: false, navPinnedAt: null },
+      });
+    }
+
+    return created;
   });
 
   revalidatePath('/admin/categories');
@@ -326,22 +366,28 @@ export async function createCategoryAction(
 
 export async function deleteCategoryAction(
   categoryId: string,
+  _prevState: CategoryFormState,
   formData: FormData,
 ): Promise<CategoryFormState> {
   await ensureAdmin();
 
   const fallbackId = (formData.get('fallbackCategoryId') ?? '').toString().trim();
+  const errors: Record<string, string> = {};
 
   if (!categoryId) {
-    return { ok: false, message: 'Category id required.' };
+    errors.fallbackCategoryId = 'Category id required.';
   }
 
   if (!fallbackId) {
-    return { ok: false, message: 'Pick a category to move existing articles into.' };
+    errors.fallbackCategoryId = 'Pick a category to move existing articles into.';
   }
 
   if (fallbackId === categoryId) {
-    return { ok: false, message: 'Fallback category must be different.' };
+    errors.fallbackCategoryId = 'Fallback category must be different.';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, message: 'Fix the highlighted fields and try again.', errors };
   }
 
   const [target, fallback] = await Promise.all([
